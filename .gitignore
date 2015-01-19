@@ -2,3 +2,6 @@ build
 datafiles
 test_datafiles
 .idea
+NanoDB.iml
+jacoco-0.7.3-20141010.162345-3/doc/examples/examples.iml
+schemas/stores/stores.iml
