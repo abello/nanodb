@@ -601,6 +601,8 @@ public class DataPage {
      * @param slot the slot of the tuple to delete
      */
     public static void deleteTuple(DBPage dbPage, int slot) {
+        logger.debug(String.format(
+                "Called deleteTuple(DBPage, %d)", slot));
 
         if (slot < 0) {
             throw new IllegalArgumentException(
@@ -614,7 +616,29 @@ public class DataPage {
                 " slots, but slot " + slot + " was requested for deletion.");
         }
 
-        // TODO:  Complete this implementation.
-        throw new UnsupportedOperationException("TODO:  Implement!");
+
+        // Delete the data of the tuple
+        // NOTE: Check if tuple is already deleted?
+        deleteTupleDataRange(dbPage, getSlotValue(dbPage, slot), getTupleLength(dbPage, slot));
+
+        // Set slot value to EMPTY_SLOT
+        setSlotValue(dbPage, slot, EMPTY_SLOT);
+
+        // NOTE: Don't need to compute obsoleteSlots explicitely. This code looks a little
+        // easier to read though
+        int obsoleteSlots = 0;
+        for (int s = slot; s < numSlots; s++) {
+            // If the slot is not empty, break out of loop
+            if (getSlotValue(dbPage, s) != EMPTY_SLOT) {
+                break;
+            }
+            obsoleteSlots++;
+
+            if (s == numSlots - 1) {
+                // If we're on last slot, we can remove [slot..numSlots]
+                setNumSlots(dbPage, numSlots - obsoleteSlots);
+                break;
+            }
+        }
     }
 }
