@@ -11,6 +11,7 @@ import edu.caltech.nanodb.relations.ColumnType;
 import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.SQLDataType;
 import edu.caltech.nanodb.relations.Tuple;
+import org.apache.log4j.Logger;
 
 
 /**
@@ -57,6 +58,9 @@ public abstract class PageTuple implements Tuple {
      * particularly if multiple tuples from the {@code DBPage} are in use.
      */
     private int pinCount;
+
+    /** A logging object for reporting anything interesting that happens. */
+    private static Logger logger = Logger.getLogger(PageTuple.class);
 
 
     /** The database page that contains the tuple's data. */
@@ -487,7 +491,7 @@ public abstract class PageTuple implements Tuple {
      * @param iCol the index of the column to set to <tt>NULL</tt>
      */
     private void setNullColumnValue(int iCol) {
-        /* TODO:  Implement!
+        /*
          *
          * The column's flag in the tuple's null-bitmap must be set to true.
          * Also, the data occupied by the column's value must be removed.
@@ -509,7 +513,44 @@ public abstract class PageTuple implements Tuple {
          * properly as well.  (Note that columns whose value is NULL will have
          * the special NULL_OFFSET constant as their offset in the tuple.)
          */
-        throw new UnsupportedOperationException("TODO:  Implement!");
+
+
+        logger.debug(String.format(
+                "setNullColumnValue(%d) called", iCol));
+
+
+        // If the column is already null, just return
+        if (isNullValue(iCol)) {
+            return;
+        }
+
+        // Compute the column value offsets (if not already computed)
+        // computeValueOffsets();
+
+        // Set null-bitmask value for appropriate column to true
+        setNullFlag(dbPage, pageOffset, iCol, true);
+
+
+        ColumnInfo columnInfo = schema.getColumnInfo(iCol);
+        ColumnType columnType = columnInfo.getType();
+        int dataLength = 0;
+        if (columnType.hasLength()) {
+            dataLength = columnType.getLength();
+        }
+
+        int storageSize = getStorageSize(columnType, dataLength);
+
+        // Delete the null range of the tuple
+        deleteTupleDataRange(valueOffsets[iCol], storageSize);
+
+        // Update valueOffset. The offset for the null column is 0;
+        // the offset for the next columns will have to be decreased by the old
+        // value of the now-null column.
+        for (int i = iCol; i < valueOffsets.length; i++) {
+            valueOffsets[i] -= valueOffsets[iCol];
+        }
+
+        valueOffsets[iCol] = 0;
     }
 
 
