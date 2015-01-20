@@ -377,9 +377,11 @@ public class HeapTupleFile implements TupleFile {
         HeapFilePageTuple ptup = (HeapFilePageTuple) tup;
 
         DBPage dbPage = ptup.getDBPage();
-        boolean free = DataPage.isFree(dbPage);
+        boolean wasFree = DataPage.isFree(dbPage);
         DataPage.deleteTuple(dbPage, ptup.getSlot());
-        if (!free && DataPage.isFree(dbPage)) {
+        if (!wasFree && DataPage.isFree(dbPage)) {
+            logger.debug(String.format(
+                    "Page wasn't free, but it's free after deletion"));
             addToFreeList(dbPage);
         }
 
