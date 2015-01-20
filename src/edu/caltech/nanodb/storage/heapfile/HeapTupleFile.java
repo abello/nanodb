@@ -255,18 +255,6 @@ public class HeapTupleFile implements TupleFile {
     @Override
     public Tuple addTuple(Tuple tup) throws IOException {
 
-        /*
-         * Check to see whether any constraints are violated by
-         * adding this tuple
-         *
-         * Find out how large the new tuple will be, so we can find a page to
-         * store it.
-         *
-         * Find a page with space for the new tuple.
-         *
-         * Generate the data necessary for storing the tuple into the file.
-         */
-
         int tupSize = PageTuple.getTupleStorageSize(schema, tup);
         logger.debug("Adding new tuple of size " + tupSize + " bytes.");
 
@@ -280,59 +268,57 @@ public class HeapTupleFile implements TupleFile {
 
         // Search for a page to put the tuple in.  If we hit the end of the
         // data file, create a new page.
-        int pageNo = 1;
-        DBPage dbPage = null;
-        while (true) {
-            // Try to load the page without creating a new one.
-            try {
+
+        DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
+        DBPage prevPage = null;
+        int pageNo = 0;
+        DBPage dbPage = headerPage;
+        while (dbPage != null) {
+            if (prevPage != null) {
+                prevPage.unpin();
+            }
+            prevPage = dbPage;
+            pageNo = DataPage.getNextFreePageNo(dbPage);
+            if (pageNo == 0) {
+                dbPage = null;
+                break;
+            } else {
                 dbPage = storageManager.loadDBPage(dbFile, pageNo);
             }
-            catch (EOFException eofe) {
-                // Couldn't load the current page, because it doesn't exist.
-                // Break out of the loop.
-                logger.debug("Reached end of data file without finding " +
-                             "space for new tuple.");
-                break;
-            }
-
             int freeSpace = DataPage.getFreeSpaceInPage(dbPage);
-
-            logger.trace(String.format("Page %d has %d bytes of free space.",
-                         pageNo, freeSpace));
-
-            // If this page has enough free space to add a new tuple, break
-            // out of the loop.  (The "+ 2" is for the new slot entry we will
-            // also need.)
             if (freeSpace >= tupSize + 2) {
                 logger.debug("Found space for new tuple in page " + pageNo + ".");
                 break;
             }
-
-            // If we reached this point then the page doesn't have enough
-            // space, so go on to the next data page.
-            dbPage.unpin();
-            dbPage = null;
-            pageNo++;
         }
 
         if (dbPage == null) {
             // Try to create a new page at the end of the file.  In this
             // circumstance, pageNo is *just past* the last page in the data
             // file.
+            pageNo = dbFile.getNumPages();
+
             logger.debug("Creating new page " + pageNo + " to store new tuple.");
             dbPage = storageManager.loadDBPage(dbFile, pageNo, true);
             DataPage.initNewPage(dbPage);
+            int prevNextFreePageNo = DataPage.getNextFreePageNo(prevPage);
+            DataPage.setNextFreePageNo(dbPage, (short)prevNextFreePageNo);
+            DataPage.setNextFreePageNo(prevPage, (short)pageNo);
         }
 
         int slot = DataPage.allocNewTuple(dbPage, tupSize);
         int tupOffset = DataPage.getSlotValue(dbPage, slot);
 
         logger.debug(String.format(
-            "New tuple will reside on page %d, slot %d.", pageNo, slot));
+                "New tuple will reside on page %d, slot %d.", pageNo, slot));
 
         HeapFilePageTuple pageTup =
-            HeapFilePageTuple.storeNewTuple(schema, dbPage, slot, tupOffset, tup);
+                HeapFilePageTuple.storeNewTuple(schema, dbPage, slot, tupOffset, tup);
 
+
+        if (!DataPage.isFree(dbPage)) {
+            DataPage.setNextFreePageNo(prevPage, (short)0);
+        }
         DataPage.sanityCheck(dbPage);
 
         return pageTup;
@@ -356,7 +342,8 @@ public class HeapTupleFile implements TupleFile {
                 "Tuple must be of type HeapFilePageTuple; got " + tup.getClass());
         }
         HeapFilePageTuple ptup = (HeapFilePageTuple) tup;
-
+        DBPage dbPage = ptup.getDBPage();
+        boolean free = DataPage.isFree(dbPage);
         for (Map.Entry<String, Object> entry : newValues.entrySet()) {
             String colName = entry.getKey();
             Object value = entry.getValue();
@@ -364,11 +351,20 @@ public class HeapTupleFile implements TupleFile {
             int colIndex = schema.getColumnIndex(colName);
             ptup.setColumnValue(colIndex, value);
         }
+        if (!free && DataPage.isFree(dbPage)) {
+            addToFreeList(dbPage);
+        }
 
-        DBPage dbPage = ptup.getDBPage();
         DataPage.sanityCheck(dbPage);
     }
 
+    private void addToFreeList(DBPage dbPage) throws IOException {
+        // The page was freed. Add it to the linked-list of non-full pages.
+        DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
+        int headerNextFreePageNo = DataPage.getNextFreePageNo(headerPage);
+        DataPage.setNextFreePageNo(dbPage, (short)headerNextFreePageNo);
+        DataPage.setNextFreePageNo(headerPage, (short)dbPage.getPageNo());
+    }
 
     // Inherit interface-method documentation.
     @Override
@@ -381,7 +377,11 @@ public class HeapTupleFile implements TupleFile {
         HeapFilePageTuple ptup = (HeapFilePageTuple) tup;
 
         DBPage dbPage = ptup.getDBPage();
+        boolean free = DataPage.isFree(dbPage);
         DataPage.deleteTuple(dbPage, ptup.getSlot());
+        if (!free && DataPage.isFree(dbPage)) {
+            addToFreeList(dbPage);
+        }
 
         DataPage.sanityCheck(dbPage);
     }

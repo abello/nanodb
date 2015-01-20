@@ -42,6 +42,8 @@ public class DataPage {
     public static final int EMPTY_SLOT = 0;
 
 
+    public static final short EMPTY_PAGE_NO = 0;
+
     /**
      * Initialize a newly allocated data page.  Currently this involves setting
      * the number of slots to 0.  There is no other internal structure in data
@@ -51,6 +53,7 @@ public class DataPage {
      */
     public static void initNewPage(DBPage dbPage) {
         setNumSlots(dbPage, 0);
+        setNextFreePageNo(dbPage, EMPTY_PAGE_NO);
     }
 
 
@@ -58,6 +61,20 @@ public class DataPage {
         return (1 + slot) * 2;
     }
 
+
+    public static int getNextFreePageNo(DBPage dbPage) {
+        int freePageNoOffset = getTupleDataEnd(dbPage);
+        return dbPage.readUnsignedShort(freePageNoOffset);
+    }
+
+    public static void setNextFreePageNo(DBPage dbPage, short pageNo) {
+        int freePageNoOffset = getTupleDataEnd(dbPage);
+        dbPage.writeShort(freePageNoOffset, pageNo);
+    }
+
+    public static boolean isFree(DBPage dbPage) {
+        return getFreeSpaceInPage(dbPage) > 0.05 * dbPage.getPageSize();
+    }
 
     /**
      * Returns the number of slots in this data page.  This can be considered
@@ -220,7 +237,7 @@ public class DataPage {
      * @return the index where the tuple data ends in this data page
      */
     public static int getTupleDataEnd(DBPage dbPage) {
-        return dbPage.getPageSize();
+        return dbPage.getPageSize() - 2;
     }
 
 
