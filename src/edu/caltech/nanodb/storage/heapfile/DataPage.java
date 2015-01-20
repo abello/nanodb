@@ -607,15 +607,19 @@ public class DataPage {
         // Set slot value to EMPTY_SLOT
         setSlotValue(dbPage, slot, EMPTY_SLOT);
 
+        // NOTE: Don't need to compute obsoleteSlots explicitely. This code looks a little
+        // easier to read though
+        int obsoleteSlots = 0;
         for (int s = slot; s < numSlots; s++) {
             // If the slot is not empty, break out of loop
             if (getSlotValue(dbPage, s) != EMPTY_SLOT) {
                 break;
             }
+            obsoleteSlots++;
 
             if (s == numSlots - 1) {
                 // If we're on last slot, we can remove [slot..numSlots]
-                setNumSlots(dbPage, numSlots - slot);
+                setNumSlots(dbPage, numSlots - obsoleteSlots);
                 break;
             }
         }
