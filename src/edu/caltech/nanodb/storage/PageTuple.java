@@ -4,6 +4,7 @@ package edu.caltech.nanodb.storage;
 import java.util.Collections;
 import java.util.List;
 
+import edu.caltech.nanodb.expressions.ColumnValue;
 import edu.caltech.nanodb.expressions.TypeConverter;
 
 import edu.caltech.nanodb.relations.ColumnInfo;
@@ -11,6 +12,7 @@ import edu.caltech.nanodb.relations.ColumnType;
 import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.SQLDataType;
 import edu.caltech.nanodb.relations.Tuple;
+import org.apache.log4j.Logger;
 
 
 /**
@@ -57,6 +59,9 @@ public abstract class PageTuple implements Tuple {
      * particularly if multiple tuples from the {@code DBPage} are in use.
      */
     private int pinCount;
+
+    /** A logging object for reporting anything interesting that happens. */
+    private static Logger logger = Logger.getLogger(PageTuple.class);
 
 
     /** The database page that contains the tuple's data. */
@@ -487,7 +492,7 @@ public abstract class PageTuple implements Tuple {
      * @param iCol the index of the column to set to <tt>NULL</tt>
      */
     private void setNullColumnValue(int iCol) {
-        /* TODO:  Implement!
+        /*
          *
          * The column's flag in the tuple's null-bitmap must be set to true.
          * Also, the data occupied by the column's value must be removed.
@@ -509,7 +514,41 @@ public abstract class PageTuple implements Tuple {
          * properly as well.  (Note that columns whose value is NULL will have
          * the special NULL_OFFSET constant as their offset in the tuple.)
          */
-        throw new UnsupportedOperationException("TODO:  Implement!");
+
+
+        logger.debug(String.format(
+                "setNullColumnValue(%d) called", iCol));
+
+
+        // If the column is already null, just return
+        if (isNullValue(iCol)) {
+            return;
+        }
+
+        // Set null-bitmask value for appropriate column to true
+        setNullFlag(dbPage, pageOffset, iCol, true);
+
+
+        ColumnInfo columnInfo = schema.getColumnInfo(iCol);
+        ColumnType columnType = columnInfo.getType();
+        int dataLength = 0;
+        if (columnType.hasLength()) {
+            dataLength = columnType.getLength();
+        }
+
+        int storageSize = getStorageSize(columnType, dataLength);
+
+        // Delete the null range of the tuple
+        deleteTupleDataRange(valueOffsets[iCol], storageSize);
+
+        // Update valueOffset. The offset for the null column is 0;
+        // the offset for the next columns will have to be decreased by the old
+        // value of the now-null column.
+        for (int i = iCol; i < valueOffsets.length; i++) {
+            valueOffsets[i] -= valueOffsets[iCol];
+        }
+
+        valueOffsets[iCol] = 0;
     }
 
 
@@ -528,7 +567,7 @@ public abstract class PageTuple implements Tuple {
         if (value == null)
             throw new IllegalArgumentException("value cannot be null");
 
-        /* TODO:  Implement!
+        /*
          *
          * This time, the column's flag in the tuple's null-bitmap must be set
          * to false (if it was true before).
@@ -554,7 +593,101 @@ public abstract class PageTuple implements Tuple {
          * Finally, once you have made space for the new column value, you can
          * write the value itself using the writeNonNullValue() method.
          */
-        throw new UnsupportedOperationException("TODO:  Implement!");
+
+        logger.debug(String.format(
+                "setNonNullColumnValue(%d) called", colIndex));
+
+
+        // If the column is already null, just return
+        if (isNullValue(colIndex)) {
+            // Set null-bitmask value for appropriate column to true
+            setNullFlag(dbPage, pageOffset, colIndex, true);
+        }
+
+
+        ColumnInfo columnInfo = schema.getColumnInfo(colIndex);
+        ColumnType columnType = columnInfo.getType();
+
+        int currentColumnValueSize = getColumnValueSize(columnType, valueOffsets[colIndex]);
+        int newColumnValueSize = 0;
+
+        // ----------------------------------------------
+        // TODO: There is a better way to do this (or at least wrap in a function)
+        // Using code from DBPage.java
+        //-----------------------------------------------
+
+        // This code relies on Java autoboxing.  Go, syntactic sugar.
+        switch (columnType.getBaseType()) {
+
+            case INTEGER: {
+                newColumnValueSize = 4;
+                break;
+            }
+
+            case SMALLINT: {
+                newColumnValueSize = 2;
+                break;
+            }
+
+            case BIGINT: {
+                newColumnValueSize = 8;
+                break;
+            }
+
+            case TINYINT: {
+                newColumnValueSize = 1;
+                break;
+            }
+
+            case FLOAT: {
+                newColumnValueSize = 4;
+                break;
+            }
+
+            case DOUBLE: {
+                newColumnValueSize = 8;
+                break;
+            }
+
+            case CHAR: {
+                newColumnValueSize = columnType.getLength();
+                break;
+            }
+
+            case VARCHAR: {
+                String strVal = TypeConverter.getStringValue(value);
+                newColumnValueSize = 2 + strVal.length();
+                break;
+            }
+
+            case FILE_POINTER: {
+                newColumnValueSize = 4;
+                break;
+            }
+        }
+        // -------------------------------------------
+        // -------------------------------------------
+
+        int extraSizeNeeded = newColumnValueSize - currentColumnValueSize;
+
+        int colOffset = valueOffsets[colIndex];
+
+        if (extraSizeNeeded > 0) {
+            // insert some extra space
+            insertTupleDataRange(colOffset, extraSizeNeeded);
+        }
+        else if (extraSizeNeeded < 0) {
+            // Delete the column range for the extra space
+            deleteTupleDataRange(colOffset, -extraSizeNeeded);
+        }
+
+        // Update valueOffsets
+        for (int i = colIndex; i < valueOffsets.length; i++) {
+            valueOffsets[i] += extraSizeNeeded;
+        }
+
+        // At this point we have the right size allocated, let's go ahead and write
+        writeNonNullValue(dbPage, colOffset, columnType, value);
     }
 
 
