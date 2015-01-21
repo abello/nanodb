@@ -1,6 +1,7 @@
 package edu.caltech.nanodb.storage;
 
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -531,15 +532,15 @@ public abstract class PageTuple implements Tuple {
 
         ColumnInfo columnInfo = schema.getColumnInfo(iCol);
         ColumnType columnType = columnInfo.getType();
-        int dataLength = 0;
-        if (columnType.hasLength()) {
-            dataLength = columnType.getLength();
-        }
 
-        int storageSize = getStorageSize(columnType, dataLength);
+        // int storageSize = getStorageSize(columnType, dataLength);
+
+        int columnValueSize = getColumnValueSize(columnType, valueOffsets[iCol]);
+        logger.debug(String.format(
+                "storageSize for column %d is %d", iCol, columnValueSize));
 
         // Delete the null range of the tuple
-        deleteTupleDataRange(valueOffsets[iCol], storageSize);
+        deleteTupleDataRange(valueOffsets[iCol], columnValueSize);
 
         // Update valueOffset. The offset for the null column is 0;
         // the offset for the next columns will have to be decreased by the old
@@ -598,10 +599,10 @@ public abstract class PageTuple implements Tuple {
                 "setNonNullColumnValue(%d) called", colIndex));
 
 
-        // If the column is already null, just return
+        // If the column is already null, mark it as non-null
         if (isNullValue(colIndex)) {
             // Set null-bitmask value for appropriate column to true
-            setNullFlag(dbPage, pageOffset, colIndex, true);
+            setNullFlag(dbPage, pageOffset, colIndex, false);
         }
 
 
@@ -664,6 +665,7 @@ public abstract class PageTuple implements Tuple {
                 newColumnValueSize = 4;
                 break;
             }
+            // TODO: Add default case where it throws some exception
         }
         // -------------------------------------------
         // -------------------------------------------
@@ -681,10 +683,18 @@ public abstract class PageTuple implements Tuple {
             deleteTupleDataRange(colOffset, -extraSizeNeeded);
         }
 
+        logger.debug(String.format(
+                "Old valueOffsets: %s", Arrays.toString(valueOffsets)));
+
         // Update valueOffsets
-        for (int i = colIndex; i < valueOffsets.length; i++) {
-            valueOffsets[i] += extraSizeNeeded;
+        for (int i = 0; i <= colIndex; i++) {
+            valueOffsets[i] -= extraSizeNeeded;
         }
+
+        logger.debug(String.format(
+                "New valueOffsets: %s", Arrays.toString(valueOffsets)));
+
+        colOffset = valueOffsets[colIndex];
 
         // At this point we have the right size allocated, let's go ahead and write
         writeNonNullValue(dbPage, colOffset, columnType, value);
