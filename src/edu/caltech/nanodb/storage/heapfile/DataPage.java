@@ -617,6 +617,9 @@ public class DataPage {
         }
 
 
+        logger.debug(String.format(
+                "Free space in page before deletion: %d", getFreeSpaceInPage(dbPage)));
+
         // Delete the data of the tuple
         // NOTE: Check if tuple is already deleted?
         deleteTupleDataRange(dbPage, getSlotValue(dbPage, slot), getTupleLength(dbPage, slot));
@@ -640,5 +643,8 @@ public class DataPage {
                 break;
             }
         }
+
+        logger.debug(String.format(
+                "Free space in page after deletion: %d", getFreeSpaceInPage(dbPage)));
     }
 }
