@@ -536,10 +536,14 @@ public abstract class PageTuple implements Tuple {
             dataLength = columnType.getLength();
         }
 
-        int storageSize = getStorageSize(columnType, dataLength);
+        // int storageSize = getStorageSize(columnType, dataLength);
+
+        int columnValueSize = getColumnValueSize(columnType, valueOffsets[iCol]);
+        logger.debug(String.format(
+                "storageSize for column %d is %d", iCol, columnValueSize));
 
         // Delete the null range of the tuple
-        deleteTupleDataRange(valueOffsets[iCol], storageSize);
+        deleteTupleDataRange(valueOffsets[iCol], columnValueSize);
 
         // Update valueOffset. The offset for the null column is 0;
         // the offset for the next columns will have to be decreased by the old
