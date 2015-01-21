@@ -609,8 +609,64 @@ public abstract class PageTuple implements Tuple {
         ColumnType columnType = columnInfo.getType();
 
         int currentColumnValueSize = getColumnValueSize(columnType, valueOffsets[colIndex]);
-        // TODO: Calculate this
-        int newColumnValueSize = 2;
+        int newColumnValueSize = 0;
+
+        // ----------------------------------------------
+        // TODO: There is a better way to do this (or at least wrap in a function)
+        // Using code from DBPage.java
+        //-----------------------------------------------
+
+        // This code relies on Java autoboxing.  Go, syntactic sugar.
+        switch (columnType.getBaseType()) {
+
+            case INTEGER: {
+                newColumnValueSize = 4;
+                break;
+            }
+
+            case SMALLINT: {
+                newColumnValueSize = 2;
+                break;
+            }
+
+            case BIGINT: {
+                newColumnValueSize = 8;
+                break;
+            }
+
+            case TINYINT: {
+                newColumnValueSize = 1;
+                break;
+            }
+
+            case FLOAT: {
+                newColumnValueSize = 4;
+                break;
+            }
+
+            case DOUBLE: {
+                newColumnValueSize = 8;
+                break;
+            }
+
+            case CHAR: {
+                newColumnValueSize = columnType.getLength();
+                break;
+            }
+
+            case VARCHAR: {
+                String strVal = TypeConverter.getStringValue(value);
+                newColumnValueSize = 2 + strVal.length();
+                break;
+            }
+
+            case FILE_POINTER: {
+                newColumnValueSize = 4;
+                break;
+            }
+        }
+        // -------------------------------------------
+        // -------------------------------------------
 
         int extraSizeNeeded = newColumnValueSize - currentColumnValueSize;
 
