@@ -279,6 +279,7 @@ public class HeapTupleFile implements TupleFile {
             }
             prevPage = dbPage;
             pageNo = DataPage.getNextFreePageNo(dbPage);
+            logger.debug("Trying page " + dbPage.getPageNo() + " it maps to " + pageNo);
             if (pageNo == 0) {
                 dbPage = null;
                 break;
@@ -317,7 +318,7 @@ public class HeapTupleFile implements TupleFile {
 
 
         if (!DataPage.isFree(dbPage)) {
-            DataPage.setNextFreePageNo(prevPage, (short)0);
+            DataPage.setNextFreePageNo(prevPage, (short)DataPage.getNextFreePageNo(dbPage));
         }
         DataPage.sanityCheck(dbPage);
 
@@ -363,7 +364,10 @@ public class HeapTupleFile implements TupleFile {
         DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
         int headerNextFreePageNo = DataPage.getNextFreePageNo(headerPage);
         DataPage.setNextFreePageNo(dbPage, (short)headerNextFreePageNo);
-        DataPage.setNextFreePageNo(headerPage, (short)dbPage.getPageNo());
+        DataPage.setNextFreePageNo(headerPage, (short) dbPage.getPageNo());
+        logger.debug(String.format(
+                "0 --> %d, %d --> %d", DataPage.getNextFreePageNo(headerPage), dbPage.getPageNo(), DataPage.getNextFreePageNo(dbPage)
+        ));
     }
 
     // Inherit interface-method documentation.
