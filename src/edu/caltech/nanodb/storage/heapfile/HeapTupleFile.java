@@ -321,6 +321,9 @@ public class HeapTupleFile implements TupleFile {
             DataPage.setNextFreePageNo(prevPage, (short)DataPage.getNextFreePageNo(dbPage));
         }
         DataPage.sanityCheck(dbPage);
+        
+        prevPage.unpin();
+        dbPage.unpin();
 
         return pageTup;
     }
@@ -355,7 +358,7 @@ public class HeapTupleFile implements TupleFile {
         if (!free && DataPage.isFree(dbPage)) {
             addToFreeList(dbPage);
         }
-
+        
         DataPage.sanityCheck(dbPage);
     }
 
