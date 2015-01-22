@@ -372,6 +372,7 @@ public abstract class PageTuple implements Tuple {
         if (colType.getBaseType() == SQLDataType.VARCHAR)
             dataLength = dbPage.readUnsignedShort(valueOffset);
 
+
         return getStorageSize(colType, dataLength);
     }
 
@@ -541,6 +542,10 @@ public abstract class PageTuple implements Tuple {
 
         // Delete the null range of the tuple
         deleteTupleDataRange(valueOffsets[iCol], columnValueSize);
+        pageOffset += columnValueSize;
+
+        logger.debug(String.format(
+                "Old valueOffsets: %s", Arrays.toString(valueOffsets)));
 
         // Update valueOffset. The offset for the null column is 0;
         // the offset for the next columns will have to be decreased by the old
@@ -549,7 +554,11 @@ public abstract class PageTuple implements Tuple {
             valueOffsets[i] -= valueOffsets[iCol];
         }
 
-        valueOffsets[iCol] = 0;
+        valueOffsets[iCol] = NULL_OFFSET;
+
+
+        logger.debug(String.format(
+                "New valueOffsets: %s", Arrays.toString(valueOffsets)));
     }
 
 
@@ -598,19 +607,29 @@ public abstract class PageTuple implements Tuple {
         logger.debug(String.format(
                 "setNonNullColumnValue(%d) called", colIndex));
 
+        Boolean colWasNull = false;
 
         // If the column is already null, mark it as non-null
         if (isNullValue(colIndex)) {
             // Set null-bitmask value for appropriate column to true
             setNullFlag(dbPage, pageOffset, colIndex, false);
+            colWasNull = true;
         }
 
 
         ColumnInfo columnInfo = schema.getColumnInfo(colIndex);
         ColumnType columnType = columnInfo.getType();
 
-        int currentColumnValueSize = getColumnValueSize(columnType, valueOffsets[colIndex]);
+        int currentColumnValueSize;
+        if (colWasNull) {
+            currentColumnValueSize = 0;
+        }
+        else {
+            currentColumnValueSize = getColumnValueSize(columnType, valueOffsets[colIndex]);
+        }
+
         int newColumnValueSize = 0;
+
 
         // ----------------------------------------------
         // TODO: There is a better way to do this (or at least wrap in a function)
@@ -672,32 +691,66 @@ public abstract class PageTuple implements Tuple {
 
         int extraSizeNeeded = newColumnValueSize - currentColumnValueSize;
 
+        logger.debug(String.format(
+                "newColumnValueSize: %d, currentColumnValueSize: %d, extraSizeNeeded: %d", newColumnValueSize, currentColumnValueSize, extraSizeNeeded));
+
         int colOffset = valueOffsets[colIndex];
 
-        if (extraSizeNeeded > 0) {
-            // insert some extra space
-            insertTupleDataRange(colOffset, extraSizeNeeded);
+        // If the colOffset is NULL_OFFSET, we will need to calculate the actual offset to use
+        // for insertTupleDataRange()
+        if (colOffset == NULL_OFFSET) {
+            colOffset = calculateColOffset(colIndex);
+            valueOffsets[colIndex] = colOffset;
         }
-        else if (extraSizeNeeded < 0) {
-            // Delete the column range for the extra space
-            deleteTupleDataRange(colOffset, -extraSizeNeeded);
-        }
+
 
         logger.debug(String.format(
                 "Old valueOffsets: %s", Arrays.toString(valueOffsets)));
 
-        // Update valueOffsets
-        for (int i = 0; i <= colIndex; i++) {
-            valueOffsets[i] -= extraSizeNeeded;
+        if (extraSizeNeeded > 0) {
+            // insert some extra space
+            insertTupleDataRange(colOffset, extraSizeNeeded);
+            pageOffset -= extraSizeNeeded;
+        }
+        else if (extraSizeNeeded < 0) {
+            // Delete the column range for the extra space
+            deleteTupleDataRange(colOffset, -extraSizeNeeded);
+            pageOffset += -extraSizeNeeded;
         }
 
-        logger.debug(String.format(
-                "New valueOffsets: %s", Arrays.toString(valueOffsets)));
+        // Update valueOffsets
+        for (int i = 0; i <= colIndex; i++) {
+            if (valueOffsets[i] != NULL_OFFSET) {
+                valueOffsets[i] -= extraSizeNeeded;
+            }
+        }
+
 
         colOffset = valueOffsets[colIndex];
 
         // At this point we have the right size allocated, let's go ahead and write
         writeNonNullValue(dbPage, colOffset, columnType, value);
+
+        logger.debug(String.format(
+                "New valueOffsets: %s", Arrays.toString(valueOffsets)));
+    }
+
+    /**
+     * This method computes the valueOffset of a null column, since it will be NULL_OFFSET
+     * by default.
+     * @param colIndex the index of the column whos offset we want to know
+     */
+    private int calculateColOffset(int colIndex) {
+        if (colIndex ==  0) {
+            // We're at the first column; it's offset will be the start of the tuple
+            return getDataStartOffset();
+        }
+        else {
+            ColumnInfo columnInfo = schema.getColumnInfo(colIndex-1);
+            ColumnType columnType = columnInfo.getType();
+            return calculateColOffset(colIndex - 1) + getColumnValueSize(columnType, colIndex - 1);
+        }
+
     }
 
 
