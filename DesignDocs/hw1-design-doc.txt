@@ -9,8 +9,8 @@ A1.  List your team name and the people who worked on this assignment.
      bbb
 
      Ryan Batterman
-     Alexander Bello
-     Ronnell Boettcher
+     Aleksander Bello
+     Ronnel Boettcher
 
 A2.  Specify the tag name and commit-hash of the Git version you are
      submitting for your assignment.  (You can list the commit hashes
