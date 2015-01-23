@@ -1,9 +1,16 @@
 package edu.caltech.nanodb.storage.heapfile;
 
 
+import edu.caltech.nanodb.relations.ColumnInfo;
+import edu.caltech.nanodb.relations.ColumnType;
+import edu.caltech.nanodb.relations.Schema;
+import edu.caltech.nanodb.relations.TableSchema;
+import edu.caltech.nanodb.storage.PageTuple;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.storage.DBPage;
+
+import java.util.List;
 
 
 /**
@@ -72,8 +79,15 @@ public class DataPage {
         dbPage.writeShort(freePageNoOffset, pageNo);
     }
 
-    public static boolean isFree(DBPage dbPage) {
-        return getFreeSpaceInPage(dbPage) > 0.05 * dbPage.getPageSize();
+
+    public static boolean isFree(DBPage dbPage, Schema schema) {
+        int minSize = 0;
+        List<ColumnInfo> infos = schema.getColumnInfos();
+        for (ColumnInfo info : infos) {
+            ColumnType type = info.getType();
+            minSize += PageTuple.getStorageSize(type, 0);
+        }
+        return getFreeSpaceInPage(dbPage) >= minSize;
     }
 
     /**

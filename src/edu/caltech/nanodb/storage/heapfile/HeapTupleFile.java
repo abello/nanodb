@@ -317,7 +317,7 @@ public class HeapTupleFile implements TupleFile {
                 HeapFilePageTuple.storeNewTuple(schema, dbPage, slot, tupOffset, tup);
 
 
-        if (!DataPage.isFree(dbPage)) {
+        if (!DataPage.isFree(dbPage, schema)) {
             DataPage.setNextFreePageNo(prevPage, (short)DataPage.getNextFreePageNo(dbPage));
         }
         DataPage.sanityCheck(dbPage);
@@ -347,7 +347,7 @@ public class HeapTupleFile implements TupleFile {
         }
         HeapFilePageTuple ptup = (HeapFilePageTuple) tup;
         DBPage dbPage = ptup.getDBPage();
-        boolean free = DataPage.isFree(dbPage);
+        boolean free = DataPage.isFree(dbPage, schema);
         for (Map.Entry<String, Object> entry : newValues.entrySet()) {
             String colName = entry.getKey();
             Object value = entry.getValue();
@@ -355,7 +355,7 @@ public class HeapTupleFile implements TupleFile {
             int colIndex = schema.getColumnIndex(colName);
             ptup.setColumnValue(colIndex, value);
         }
-        if (!free && DataPage.isFree(dbPage)) {
+        if (!free && DataPage.isFree(dbPage, schema)) {
             addToFreeList(dbPage);
         }
         
@@ -384,9 +384,9 @@ public class HeapTupleFile implements TupleFile {
         HeapFilePageTuple ptup = (HeapFilePageTuple) tup;
 
         DBPage dbPage = ptup.getDBPage();
-        boolean wasFree = DataPage.isFree(dbPage);
+        boolean wasFree = DataPage.isFree(dbPage, schema);
         DataPage.deleteTuple(dbPage, ptup.getSlot());
-        if (!wasFree && DataPage.isFree(dbPage)) {
+        if (!wasFree && DataPage.isFree(dbPage, schema)) {
             logger.debug(String.format(
                     "Page wasn't free, but it's free after deletion"));
             addToFreeList(dbPage);
