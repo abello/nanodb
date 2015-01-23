@@ -550,15 +550,15 @@ public abstract class PageTuple implements Tuple {
         // Update valueOffset. The offset for the null column is 0;
         // the offset for the next columns will have to be decreased by the old
         // value of the now-null column.
-        //for (int i = 0; i < iCol; i++) {
-        //    if (valueOffsets[i] != NULL_OFFSET) {
-        //        valueOffsets[i] += columnValueSize;
-        //    }
-        //}
+        for (int i = 0; i < iCol; i++) {
+            if (valueOffsets[i] != NULL_OFFSET) {
+                valueOffsets[i] += columnValueSize;
+            }
+        }
 
-        //valueOffsets[iCol] = NULL_OFFSET;
-        // TODO: Remove
-        computeValueOffsets();
+        valueOffsets[iCol] = NULL_OFFSET;
+        // NOTE: This is slower than doign it manually, but leaving it here for reference
+        //computeValueOffsets();
 
 
         logger.debug(String.format(
@@ -636,7 +636,6 @@ public abstract class PageTuple implements Tuple {
 
 
         // ----------------------------------------------
-        // TODO: There is a better way to do this (or at least wrap in a function)
         // Using code from DBPage.java
         //-----------------------------------------------
 
@@ -688,7 +687,6 @@ public abstract class PageTuple implements Tuple {
                 newColumnValueSize = 4;
                 break;
             }
-            // TODO: Add default case where it throws some exception
         }
         // -------------------------------------------
         // -------------------------------------------
@@ -723,23 +721,25 @@ public abstract class PageTuple implements Tuple {
         }
 
         // Update valueOffsets
-        //for (int i = 0; i <= colIndex; i++) {
-        //    if (valueOffsets[i] != NULL_OFFSET) {
-        //        valueOffsets[i] -= extraSizeNeeded;
-        //    }
-        //}
+        for (int i = 0; i <= colIndex; i++) {
+            if (valueOffsets[i] != NULL_OFFSET) {
+                valueOffsets[i] -= extraSizeNeeded;
+            }
+        }
 
 
-        //colOffset = valueOffsets[colIndex];
+        colOffset = valueOffsets[colIndex];
 
-        // TODO: Remove
-        colOffset = valueOffsets[colIndex] - extraSizeNeeded;
+        // NOTE: Only when using computedValueOffsets()
+        //colOffset = valueOffsets[colIndex] - extraSizeNeeded;
 
         // At this point we have the right size allocated, let's go ahead and write
         writeNonNullValue(dbPage, colOffset, columnType, value);
+        
+        //computeValueOffsets();
 
-        // TODO: Remove
-        computeValueOffsets();
+        // NOTE: This is slower than updating manually, but leaving it here for future referene;
+        //computeValueOffsets();
 
         logger.debug(String.format(
                 "New valueOffsets: %s", Arrays.toString(valueOffsets)));
