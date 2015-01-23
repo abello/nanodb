@@ -751,22 +751,24 @@ public abstract class PageTuple implements Tuple {
      * @param colIndex the index of the column whos offset we want to know
      */
     private int calculateColOffset(int colIndex) {
-        if (colIndex ==  0) {
-            // We're at the first column; it's offset will be the start of the tuple
-            return getDataStartOffset();
-        }
-        else if (valueOffsets[colIndex] != 0) {
-            return valueOffsets[colIndex];
-        }
-        else {
-            ColumnInfo columnInfo = schema.getColumnInfo(colIndex-1);
-            ColumnType columnType = columnInfo.getType();
+        // Loop backwards to find first non-null column, or until we hit 0
+        for (int i = colIndex; i >=0; i--) {
+            // If we find a non-null column, start at the end of that
+            if (valueOffsets[i] != NULL_OFFSET) {
+                ColumnInfo columnInfo = schema.getColumnInfo(i);
+                ColumnType columnType = columnInfo.getType();
+                return valueOffsets[i] + getColumnValueSize(columnType, valueOffsets[i]);
+            }
 
-            logger.debug(String.format(
-                    "calculateColOffset DBG: %d", getColumnValueSize(columnType, valueOffsets[colIndex - 1])));
-            return calculateColOffset(colIndex - 1) + getColumnValueSize(columnType, valueOffsets[colIndex - 1]);
+            // otherwise, if we hit the 0th column and that's null, just start at the beginning
+            // of the data offset
+            else if (i == 0) {
+                return getDataStartOffset();
+            }
         }
 
+        // Should never get here, the compiler isn't smart enough to know that though
+        return 0;
     }
 
 
