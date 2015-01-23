@@ -27,7 +27,7 @@ A3.  Specify any late tokens you are applying to this assignment, or
 A4.  Briefly describe what parts of the assignment each teammate focused on.
 
      Ryan focused on the `Storage Performance` part; Bello on the `Tuple
-     Updates and Deletion` part; Ronnell on the pinning/unpinning part.
+     Updates and Deletion` part; Ronnel on the pinning/unpinning part.
 
 B:  Deleting and Updating Tuples
 --------------------------------
@@ -49,12 +49,29 @@ C:  Unpinning Tuples and Pages
 C1.  Briefly describe your strategy for determining when tuples need to
      be unpinned.  Make sure to comment on plan-nodes and commands.
 
+     My strategy for determining where tuples needed to be unpinned consisted
+     of locating the points in the code where tuples would no longerbe needed,
+     and unpinning them there. These occurred mostly in traversals of tuples.
+     The largest source of unpinned tuples was during file-scans and simple
+     selects -- SelectNode.java did not properly unpin tuples when advancing
+     to the next tuple. Other unpinned tuples were found by identifying cases
+     where tuples were consumed then not used further, for example in the 
+     process() function in InsertCommand.java. I found that I only had to
+     modify the "insert" command file (InsertCommand.java).
+
 C2.  In general, you only need to worry about unpinning tuples because
      the backing page will also be unpinned.  However, there are some
      situations when DBPages themselves must be unpinned directly.
      Describe any situations where you unpin pages directly in your
      implementation, and why you do so.  (Make sure to answer this
      question in the context of your insert-optimization changes.)
+
+     I unpin some DBPages directly in HeapTupleFile. In getNextTuple() I 
+     added a dbPage.unpin() to the EOFException handler, because when the
+     last page was reached, the DBPage in the dbPage variable was left 
+     unpinned. In addTuple() as well, I unpinned prevPage and dbPage because
+     the final values of these Tuples were left unpinned in the previous
+     implementation.
 
 D:  NanoDB Storage Performance
 ------------------------------
