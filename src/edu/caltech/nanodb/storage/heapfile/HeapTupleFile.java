@@ -231,6 +231,7 @@ public class HeapTupleFile implements TupleFile {
             catch (EOFException e) {
                 // Hit the end of the file with no more tuples.  We are done
                 // scanning.
+            	dbPage.unpin();
                 return null;
             }
         }

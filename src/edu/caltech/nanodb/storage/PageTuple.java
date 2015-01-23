@@ -730,6 +730,8 @@ public abstract class PageTuple implements Tuple {
 
         // At this point we have the right size allocated, let's go ahead and write
         writeNonNullValue(dbPage, colOffset, columnType, value);
+        
+        //computeValueOffsets();
 
         logger.debug(String.format(
                 "New valueOffsets: %s", Arrays.toString(valueOffsets)));
