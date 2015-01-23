@@ -550,11 +550,15 @@ public abstract class PageTuple implements Tuple {
         // Update valueOffset. The offset for the null column is 0;
         // the offset for the next columns will have to be decreased by the old
         // value of the now-null column.
-        for (int i = iCol; i < valueOffsets.length; i++) {
-            valueOffsets[i] -= valueOffsets[iCol];
-        }
+        //for (int i = 0; i < iCol; i++) {
+        //    if (valueOffsets[i] != NULL_OFFSET) {
+        //        valueOffsets[i] += columnValueSize;
+        //    }
+        //}
 
-        valueOffsets[iCol] = NULL_OFFSET;
+        //valueOffsets[iCol] = NULL_OFFSET;
+        // TODO: Remove
+        computeValueOffsets();
 
 
         logger.debug(String.format(
@@ -719,17 +723,23 @@ public abstract class PageTuple implements Tuple {
         }
 
         // Update valueOffsets
-        for (int i = 0; i <= colIndex; i++) {
-            if (valueOffsets[i] != NULL_OFFSET) {
-                valueOffsets[i] -= extraSizeNeeded;
-            }
-        }
+        //for (int i = 0; i <= colIndex; i++) {
+        //    if (valueOffsets[i] != NULL_OFFSET) {
+        //        valueOffsets[i] -= extraSizeNeeded;
+        //    }
+        //}
 
 
-        colOffset = valueOffsets[colIndex];
+        //colOffset = valueOffsets[colIndex];
+
+        // TODO: Remove
+        colOffset = valueOffsets[colIndex] - extraSizeNeeded;
 
         // At this point we have the right size allocated, let's go ahead and write
         writeNonNullValue(dbPage, colOffset, columnType, value);
+
+        // TODO: Remove
+        computeValueOffsets();
 
         logger.debug(String.format(
                 "New valueOffsets: %s", Arrays.toString(valueOffsets)));
@@ -741,16 +751,24 @@ public abstract class PageTuple implements Tuple {
      * @param colIndex the index of the column whos offset we want to know
      */
     private int calculateColOffset(int colIndex) {
-        if (colIndex ==  0) {
-            // We're at the first column; it's offset will be the start of the tuple
-            return getDataStartOffset();
-        }
-        else {
-            ColumnInfo columnInfo = schema.getColumnInfo(colIndex-1);
-            ColumnType columnType = columnInfo.getType();
-            return calculateColOffset(colIndex - 1) + getColumnValueSize(columnType, colIndex - 1);
+        // Loop backwards to find first non-null column, or until we hit 0
+        for (int i = colIndex; i >=0; i--) {
+            // If we find a non-null column, start at the end of that
+            if (valueOffsets[i] != NULL_OFFSET) {
+                ColumnInfo columnInfo = schema.getColumnInfo(i);
+                ColumnType columnType = columnInfo.getType();
+                return valueOffsets[i] + getColumnValueSize(columnType, valueOffsets[i]);
+            }
+
+            // otherwise, if we hit the 0th column and that's null, just start at the beginning
+            // of the data offset
+            else if (i == 0) {
+                return getDataStartOffset();
+            }
         }
 
+        // Should never get here, the compiler isn't smart enough to know that though
+        return 0;
     }
 
 
