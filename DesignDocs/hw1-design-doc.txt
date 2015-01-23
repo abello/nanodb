@@ -120,10 +120,13 @@ databases in general, or Donnie and the TAs in particular).
 NOTE:  If you wish to give anonymous feedback, a similar survey will be
        made available on the Moodle.  
 
+
 E1.  How many hours total did your team spend on this assignment?
      (That is, the sum of each teammate's time spent on the assignment.)
 
 E2.  What parts of the assignment were most time-consuming?
+    The update took a few tries to get right, as there were some tricky cases to
+    be handled.
 
 E3.  Which parts of the assignment did you particularly enjoy?
 
