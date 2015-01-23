@@ -36,12 +36,12 @@ public class QueryEvaluator {
 
         int rowsProduced = 0;
         try {
-            Tuple tuple;
+        	Tuple tuple;
             while (true) {
                 // Get the next tuple.  If there aren't anymore, we're done!
                 tuple = plan.getNextTuple();
-                if (tuple == null)
-                    break;
+                if (tuple == null) 
+                	break;
 
                 rowsProduced++;
 

@@ -735,6 +735,8 @@ public abstract class PageTuple implements Tuple {
 
         // At this point we have the right size allocated, let's go ahead and write
         writeNonNullValue(dbPage, colOffset, columnType, value);
+        
+        //computeValueOffsets();
 
         // NOTE: This is slower than updating manually, but leaving it here for future referene;
         //computeValueOffsets();
