@@ -244,6 +244,15 @@ public class HeapTupleFile implements TupleFile {
      * Adds the specified tuple into the table file.  A new
      * <tt>HeapFilePageTuple</tt> object corresponding to the tuple is returned.
      *
+     * A tuple is added by traversing the linkedlist of free blocks until one is
+     * identified which can store the given tuple. If the block is, in turn,
+     * non-full after addition of the tuple, then we remove it from the linkedlist:
+     * the `nextFreeBlock` of the previous block in the list is updated to point
+     * to this block's child.
+     *
+     * If we don't identify a free block which can store the tuple, then we
+     * construct a new one and add it to the end of the linkedlist.
+     *
      * @review (donnie) This could be made a little more space-efficient.
      *         Right now when computing the required space, we assume that we
      *         will <em>always</em> need a new slot entry, whereas the page may
@@ -331,6 +340,14 @@ public class HeapTupleFile implements TupleFile {
 
     // Inherit interface-method documentation.
     /**
+     *
+     * If the tuple's block becomes non-full (but was full previously), then the
+     * block is appended to the start of the free list.
+     *
+     * We don't do anything in the case that a non-full block becomes full, because
+     * doing so would require traversal through the list to identify its parent;
+     * quite a time-consuming process!
+     *
      * @review (donnie) This method will fail if a tuple is modified in a way
      *         that requires more space than is currently available in the data
      *         page.  One solution would be to move the tuple to a different
@@ -362,6 +379,12 @@ public class HeapTupleFile implements TupleFile {
         DataPage.sanityCheck(dbPage);
     }
 
+    /**
+     * Appends the given page to the start of the linkedlist of non-full blocks.
+     * @param dbPage
+     * @throws IOException
+     */
+
     private void addToFreeList(DBPage dbPage) throws IOException {
         // The page was freed. Add it to the linked-list of non-full pages.
         DBPage headerPage = storageManager.loadDBPage(dbFile, 0);
@@ -369,11 +392,22 @@ public class HeapTupleFile implements TupleFile {
         DataPage.setNextFreePageNo(dbPage, (short)headerNextFreePageNo);
         DataPage.setNextFreePageNo(headerPage, (short) dbPage.getPageNo());
         logger.debug(String.format(
-                "0 --> %d, %d --> %d", DataPage.getNextFreePageNo(headerPage), dbPage.getPageNo(), DataPage.getNextFreePageNo(dbPage)
+                "0 --> %d, %d --> %d", DataPage.getNextFreePageNo(headerPage), dbPage.getPageNo(),
+                DataPage.getNextFreePageNo(dbPage)
         ));
     }
 
     // Inherit interface-method documentation.
+
+    /**
+     * Deletes a tuple.
+     *
+     * If a block is made un-full by this operation, then it is appended to the start of the linkedlist
+     * of non-full blocks.
+     *
+     * @param tup
+     * @throws IOException
+     */
     @Override
     public void deleteTuple(Tuple tup) throws IOException {
 
