@@ -550,11 +550,15 @@ public abstract class PageTuple implements Tuple {
         // Update valueOffset. The offset for the null column is 0;
         // the offset for the next columns will have to be decreased by the old
         // value of the now-null column.
-        for (int i = iCol; i < valueOffsets.length; i++) {
-            valueOffsets[i] -= valueOffsets[iCol];
-        }
+        //for (int i = 0; i < iCol; i++) {
+        //    if (valueOffsets[i] != NULL_OFFSET) {
+        //        valueOffsets[i] += columnValueSize;
+        //    }
+        //}
 
-        valueOffsets[iCol] = NULL_OFFSET;
+        //valueOffsets[iCol] = NULL_OFFSET;
+        // TODO: Remove
+        computeValueOffsets();
 
 
         logger.debug(String.format(
@@ -719,17 +723,23 @@ public abstract class PageTuple implements Tuple {
         }
 
         // Update valueOffsets
-        for (int i = 0; i <= colIndex; i++) {
-            if (valueOffsets[i] != NULL_OFFSET) {
-                valueOffsets[i] -= extraSizeNeeded;
-            }
-        }
+        //for (int i = 0; i <= colIndex; i++) {
+        //    if (valueOffsets[i] != NULL_OFFSET) {
+        //        valueOffsets[i] -= extraSizeNeeded;
+        //    }
+        //}
 
 
-        colOffset = valueOffsets[colIndex];
+        //colOffset = valueOffsets[colIndex];
+
+        // TODO: Remove
+        colOffset = valueOffsets[colIndex] - extraSizeNeeded;
 
         // At this point we have the right size allocated, let's go ahead and write
         writeNonNullValue(dbPage, colOffset, columnType, value);
+
+        // TODO: Remove
+        computeValueOffsets();
 
         logger.debug(String.format(
                 "New valueOffsets: %s", Arrays.toString(valueOffsets)));
@@ -745,10 +755,16 @@ public abstract class PageTuple implements Tuple {
             // We're at the first column; it's offset will be the start of the tuple
             return getDataStartOffset();
         }
+        else if (valueOffsets[colIndex] != 0) {
+            return valueOffsets[colIndex];
+        }
         else {
             ColumnInfo columnInfo = schema.getColumnInfo(colIndex-1);
             ColumnType columnType = columnInfo.getType();
-            return calculateColOffset(colIndex - 1) + getColumnValueSize(columnType, colIndex - 1);
+
+            logger.debug(String.format(
+                    "calculateColOffset DBG: %d", getColumnValueSize(columnType, valueOffsets[colIndex - 1])));
+            return calculateColOffset(colIndex - 1) + getColumnValueSize(columnType, valueOffsets[colIndex - 1]);
         }
 
     }
