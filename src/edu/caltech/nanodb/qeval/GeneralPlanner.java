@@ -1,14 +1,24 @@
 package edu.caltech.nanodb.qeval;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-import edu.caltech.nanodb.commands.SelectValue;
-import edu.caltech.nanodb.expressions.OrderByExpression;
-import edu.caltech.nanodb.plans.*;
 import org.apache.log4j.Logger;
+
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.ColumnName;
 import edu.caltech.nanodb.expressions.Expression;
+import edu.caltech.nanodb.expressions.OrderByExpression;
+import edu.caltech.nanodb.plans.FileScanNode;
+import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
+import edu.caltech.nanodb.plans.PlanNode;
+import edu.caltech.nanodb.plans.ProjectNode;
+import edu.caltech.nanodb.plans.RenameNode;
+import edu.caltech.nanodb.plans.SelectNode;
+import edu.caltech.nanodb.plans.SortNode;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
 
@@ -68,25 +78,57 @@ public class GeneralPlanner implements Planner {
         	if (fromClause.isBaseTable()) {
             	planNode = makeSimpleSelect(fromClause.getTableName(),
             			selClause.getWhereExpr(), null);
-        	} else {
-            	planNode = makeGeneralSelect(fromClause.getSelectClause(), null);
+        	} 
+        	else if (fromClause.isJoinExpr()){
+        		planNode = makeJoinExpression(fromClause);
+        	}
+        	else {
+        		planNode = makeGeneralSelect(fromClause.getSelectClause(), null);
             	planNode = new RenameNode(planNode, fromClause.getResultName());
         	}
         }
+        
+        System.out.println(planNode);
 
         List<SelectValue> columns = selClause.getSelectValues();
         // TODO: check to see if we have a trivial projection
         ProjectNode projNode = new ProjectNode(planNode, columns);
-        projNode.initialize();
         planNode = projNode;
 
         List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
         if (!orderExpressions.isEmpty()) {
-            planNode = (PlanNode)new SortNode((PlanNode)projNode, orderExpressions);
-            planNode.initialize();
+            planNode = (PlanNode) new SortNode((PlanNode)projNode, orderExpressions);
         }
 
+        planNode.prepare();
         return planNode;
+    }
+    
+    private PlanNode makeJoinExpression(FromClause joinClause) throws IOException {
+    	// TODO: Handle for more complicated joins
+    	FromClause fromLeft = joinClause.getLeftChild();
+		FromClause fromRight = joinClause.getRightChild();
+		PlanNode leftNode, rightNode;
+		if (fromLeft.isBaseTable()) {
+			leftNode = makeSimpleSelect(fromLeft.getTableName(), 
+					null, null);
+		}
+		else {
+			leftNode = makeGeneralSelect(fromLeft.getSelectClause(), null);
+		}
+		
+		if (fromRight.isBaseTable()) {
+			rightNode = makeSimpleSelect(fromRight.getTableName(), 
+					null, null);
+		}
+		else {
+			rightNode = makeGeneralSelect(fromRight.getSelectClause(), null);
+		}
+		
+		NestedLoopsJoinNode ret = new NestedLoopsJoinNode(leftNode, rightNode, 
+				joinClause.getJoinType(), joinClause.getOnExpression());
+		ret.prepare();
+		return ret;
     }
 
     /**
@@ -131,7 +173,7 @@ public class GeneralPlanner implements Planner {
         // Make a SelectNode to read rows from the table, with the specified
         // predicate.
         SelectNode selectNode = new FileScanNode(tableInfo, predicate);
-        selectNode.initialize();
+        selectNode.prepare();
         return selectNode;
     }
 }
