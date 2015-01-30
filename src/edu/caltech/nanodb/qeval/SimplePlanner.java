@@ -94,8 +94,9 @@ public class SimplePlanner implements Planner {
         planNode = projNode;
 
         List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
-        if (orderExpressions != null) {
+        if (!orderExpressions.isEmpty()) {
             planNode = (PlanNode)new SortNode((PlanNode)projNode, orderExpressions);
+            planNode.initialize();
         }
 
         return planNode;
