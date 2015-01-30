@@ -15,5 +15,6 @@ SELECT * FROM t1;
 SELECT * FROM t2;
 
 SELECT * FROM t1 JOIN t2 ON t1.b=t2.b;
+-- SELECT * FROM t1 JOIN t2;
 
 
