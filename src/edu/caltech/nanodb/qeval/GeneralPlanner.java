@@ -64,15 +64,14 @@ public class GeneralPlanner implements Planner {
             throws IOException {
         FromClause fromClause = selClause.getFromClause();
         PlanNode planNode = null;
-        if (fromClause == null) {
-            System.out.println(selClause.getSelectValues().get(0).getAlias());
-        }
-        else if (fromClause.isBaseTable()) {
-            planNode = makeSimpleSelect(fromClause.getTableName(),
-                    selClause.getWhereExpr(), null);
-        } else {
-            planNode = makeGeneralSelect(fromClause.getSelectClause(), null);
-            planNode = new RenameNode(planNode, fromClause.getResultName());
+        if (fromClause != null) {
+        	if (fromClause.isBaseTable()) {
+            	planNode = makeSimpleSelect(fromClause.getTableName(),
+            			selClause.getWhereExpr(), null);
+        	} else {
+            	planNode = makeGeneralSelect(fromClause.getSelectClause(), null);
+            	planNode = new RenameNode(planNode, fromClause.getResultName());
+        	}
         }
 
         List<SelectValue> columns = selClause.getSelectValues();
