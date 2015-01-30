@@ -206,9 +206,11 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     private boolean getTuplesToJoin() throws IOException {
         PlanNode rightChild = super.rightChild;
         PlanNode leftChild = super.leftChild;
+        logger.debug("getUplesToJoin() called!");
 
         // If we're done, return here, no need to do more stuff
         if (done) {
+            logger.debug("getTuplesToJoin DONE, but still called");
             return false;
         }
 
@@ -230,8 +232,9 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // move the outer iterator by 1
         if (nextRightTuple == null) {
             // If the outer loop can't advance, we're done.
-            leftTuple = rightChild.getNextTuple();
+            leftTuple = leftChild.getNextTuple();
             if (leftTuple == null) {
+                logger.debug("getTuplesToJoin DONE");
                 done = true;
                 return false;
             }
