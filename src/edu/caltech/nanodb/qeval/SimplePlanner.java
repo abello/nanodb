@@ -4,16 +4,14 @@ package edu.caltech.nanodb.qeval;
 import java.io.IOException;
 import java.util.List;
 
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.plans.*;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
 
 import edu.caltech.nanodb.expressions.Expression;
-
-import edu.caltech.nanodb.plans.FileScanNode;
-import edu.caltech.nanodb.plans.PlanNode;
-import edu.caltech.nanodb.plans.SelectNode;
 
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
@@ -54,6 +52,7 @@ public class SimplePlanner implements Planner {
     @Override
     public PlanNode makePlan(SelectClause selClause,
         List<SelectClause> enclosingSelects) throws IOException {
+        System.out.println("makePlan called!");
         // TODO:  Implement!
 
         // For HW1, we have a very simple implementation that defers to
@@ -65,21 +64,30 @@ public class SimplePlanner implements Planner {
                 "Not yet implemented:  enclosing queries!");
         }
 
-        if (!selClause.isTrivialProject()) {
-            throw new UnsupportedOperationException(
-                "Not yet implemented:  project!");
-        }
-
-        FromClause fromClause = selClause.getFromClause();
-        if (!fromClause.isBaseTable()) {
-            throw new UnsupportedOperationException(
-                "Not yet implemented:  joins or subqueries in FROM clause!");
-        }
-
-        return makeSimpleSelect(fromClause.getTableName(),
-            selClause.getWhereExpr(), null);
+        PlanNode res = makeGeneralSelect(selClause, enclosingSelects);
+        res.prepare();
+        return res;
     }
 
+    private PlanNode makeGeneralSelect(SelectClause selClause,
+                                       List<SelectClause> enclosingSelects)
+    throws IOException {
+        FromClause fromClause = selClause.getFromClause();
+        PlanNode planNode = null;
+        if (fromClause.isBaseTable()) {
+            return makeSimpleSelect(fromClause.getTableName(),
+                    selClause.getWhereExpr(), null);
+        } else {
+            planNode = makeGeneralSelect(fromClause.getSelectClause(), null);
+            planNode = new RenameNode(planNode, fromClause.getResultName());
+        }
+
+        List<SelectValue> columns = selClause.getSelectValues();
+        // TODO: check to see if we have a trivial projection
+        ProjectNode projNode = new ProjectNode(planNode, columns);
+        projNode.initialize();
+        return projNode;
+    }
 
     /**
      * Constructs a simple select plan that reads directly from a table, with
@@ -104,6 +112,7 @@ public class SimplePlanner implements Planner {
      */
     public SelectNode makeSimpleSelect(String tableName, Expression predicate,
         List<SelectClause> enclosingSelects) throws IOException {
+        System.out.println("makeSimpleSelect called!");
         if (tableName == null)
             throw new IllegalArgumentException("tableName cannot be null");
 
@@ -122,7 +131,7 @@ public class SimplePlanner implements Planner {
         // Make a SelectNode to read rows from the table, with the specified
         // predicate.
         SelectNode selectNode = new FileScanNode(tableInfo, predicate);
-        selectNode.prepare();
+        selectNode.initialize();
         return selectNode;
     }
 }
