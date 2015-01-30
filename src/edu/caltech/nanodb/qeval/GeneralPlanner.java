@@ -1,32 +1,22 @@
 package edu.caltech.nanodb.qeval;
-
-
 import java.io.IOException;
 import java.util.List;
 
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.OrderByExpression;
+import edu.caltech.nanodb.plans.*;
 import org.apache.log4j.Logger;
-
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
-
 import edu.caltech.nanodb.expressions.Expression;
-
-import edu.caltech.nanodb.plans.FileScanNode;
-import edu.caltech.nanodb.plans.PlanNode;
-import edu.caltech.nanodb.plans.SelectNode;
-
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
 
 
 /**
- * This class generates execution plans for performing SQL queries.  The
- * primary responsibility is to generate plans for SQL <tt>SELECT</tt>
- * statements, but <tt>UPDATE</tt> and <tt>DELETE</tt> expressions will also
- * use this class to generate simple plans to identify the tuples to update
- * or delete.
+ * This class generates execution plans for performing SQL queries.
  */
-public class SimplePlanner implements Planner {
+public class GeneralPlanner implements Planner {
 
     /** A logging object for reporting anything interesting that happens. */
     private static Logger logger = Logger.getLogger(SimplePlanner.class);
@@ -48,38 +38,57 @@ public class SimplePlanner implements Planner {
      *
      * @return a plan tree for executing the specified query
      *
-     * @throws IOException if an IO error occurs when the planner attempts to
+     * @throws java.io.IOException if an IO error occurs when the planner attempts to
      *         load schema and indexing information.
      */
     @Override
     public PlanNode makePlan(SelectClause selClause,
-        List<SelectClause> enclosingSelects) throws IOException {
+                             List<SelectClause> enclosingSelects) throws IOException {
+        System.out.println("makePlan called!");
         // TODO:  Implement!
-
-        // For HW1, we have a very simple implementation that defers to
-        // makeSimpleSelect() to handle simple SELECT queries with one table,
-        // and an optional WHERE clause.
 
         if (enclosingSelects != null && !enclosingSelects.isEmpty()) {
             throw new UnsupportedOperationException(
-                "Not yet implemented:  enclosing queries!");
+                    "Not yet implemented:  enclosing queries!");
         }
 
-        if (!selClause.isTrivialProject()) {
-            throw new UnsupportedOperationException(
-                "Not yet implemented:  project!");
-        }
-
-        FromClause fromClause = selClause.getFromClause();
-        if (!fromClause.isBaseTable()) {
-            throw new UnsupportedOperationException(
-                "Not yet implemented:  joins or subqueries in FROM clause!");
-        }
-
-        return makeSimpleSelect(fromClause.getTableName(),
-            selClause.getWhereExpr(), null);
+        // TODO: get logger.debug working.
+        System.out.println(selClause);
+        PlanNode res = makeGeneralSelect(selClause, enclosingSelects);
+        res.prepare();
+        return res;
     }
 
+    private PlanNode makeGeneralSelect(SelectClause selClause,
+                                       List<SelectClause> enclosingSelects)
+            throws IOException {
+        FromClause fromClause = selClause.getFromClause();
+        PlanNode planNode = null;
+        if (fromClause == null) {
+            System.out.println(selClause.getSelectValues().get(0).getAlias());
+        }
+        else if (fromClause.isBaseTable()) {
+            planNode = makeSimpleSelect(fromClause.getTableName(),
+                    selClause.getWhereExpr(), null);
+        } else {
+            planNode = makeGeneralSelect(fromClause.getSelectClause(), null);
+            planNode = new RenameNode(planNode, fromClause.getResultName());
+        }
+
+        List<SelectValue> columns = selClause.getSelectValues();
+        // TODO: check to see if we have a trivial projection
+        ProjectNode projNode = new ProjectNode(planNode, columns);
+        projNode.initialize();
+        planNode = projNode;
+
+        List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
+        if (!orderExpressions.isEmpty()) {
+            planNode = (PlanNode)new SortNode((PlanNode)projNode, orderExpressions);
+            planNode.initialize();
+        }
+
+        return planNode;
+    }
 
     /**
      * Constructs a simple select plan that reads directly from a table, with
@@ -103,7 +112,8 @@ public class SimplePlanner implements Planner {
      *         information.
      */
     public SelectNode makeSimpleSelect(String tableName, Expression predicate,
-        List<SelectClause> enclosingSelects) throws IOException {
+                                       List<SelectClause> enclosingSelects) throws IOException {
+        System.out.println("makeSimpleSelect called!");
         if (tableName == null)
             throw new IllegalArgumentException("tableName cannot be null");
 
@@ -113,7 +123,7 @@ public class SimplePlanner implements Planner {
             // Therefore we will probably fail with an unrecognized column
             // reference.
             logger.warn("Currently we are not clever enough to detect " +
-                "correlated subqueries, so expect things are about to break...");
+                    "correlated subqueries, so expect things are about to break...");
         }
 
         // Open the table.
@@ -122,7 +132,7 @@ public class SimplePlanner implements Planner {
         // Make a SelectNode to read rows from the table, with the specified
         // predicate.
         SelectNode selectNode = new FileScanNode(tableInfo, predicate);
-        selectNode.prepare();
+        selectNode.initialize();
         return selectNode;
     }
 }
