@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 
 import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.OrderByExpression;
 import edu.caltech.nanodb.plans.*;
 import org.apache.log4j.Logger;
 
@@ -64,6 +65,7 @@ public class SimplePlanner implements Planner {
                 "Not yet implemented:  enclosing queries!");
         }
 
+        System.out.println(selClause);
         PlanNode res = makeGeneralSelect(selClause, enclosingSelects);
         res.prepare();
         return res;
@@ -74,8 +76,11 @@ public class SimplePlanner implements Planner {
     throws IOException {
         FromClause fromClause = selClause.getFromClause();
         PlanNode planNode = null;
-        if (fromClause.isBaseTable()) {
-            return makeSimpleSelect(fromClause.getTableName(),
+        if (fromClause == null) {
+            System.out.println(selClause.getSelectValues().get(0).getAlias());
+        }
+        else if (fromClause.isBaseTable()) {
+            planNode = makeSimpleSelect(fromClause.getTableName(),
                     selClause.getWhereExpr(), null);
         } else {
             planNode = makeGeneralSelect(fromClause.getSelectClause(), null);
@@ -86,7 +91,14 @@ public class SimplePlanner implements Planner {
         // TODO: check to see if we have a trivial projection
         ProjectNode projNode = new ProjectNode(planNode, columns);
         projNode.initialize();
-        return projNode;
+        planNode = projNode;
+
+        List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
+        if (orderExpressions != null) {
+            planNode = (PlanNode)new SortNode((PlanNode)projNode, orderExpressions);
+        }
+
+        return planNode;
     }
 
     /**
