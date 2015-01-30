@@ -183,12 +183,10 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                         return joinTuples(leftTuple, rightTuple);
                     }
                     break;
+
                 case LEFT_OUTER:
-                    break;
                 case SEMIJOIN:
-                    break;
                 case ANTIJOIN:
-                    break;
                 default:
                     throw new IllegalArgumentException("This type of join is not yet supported!");
             }
