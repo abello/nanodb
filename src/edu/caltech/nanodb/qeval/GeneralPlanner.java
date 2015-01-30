@@ -1,9 +1,12 @@
 package edu.caltech.nanodb.qeval;
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
 
 import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.FunctionCall;
 import edu.caltech.nanodb.expressions.OrderByExpression;
+import edu.caltech.nanodb.functions.AggregateFunction;
+import edu.caltech.nanodb.functions.Function;
 import edu.caltech.nanodb.plans.*;
 import org.apache.log4j.Logger;
 import edu.caltech.nanodb.commands.FromClause;
@@ -54,41 +57,124 @@ public class GeneralPlanner implements Planner {
 
         // TODO: get logger.debug working.
         System.out.println(selClause);
-        PlanNode res = makeGeneralSelect(selClause, enclosingSelects);
+        PlanNode res = makeGeneralSelect(selClause);
         res.prepare();
         return res;
     }
 
-    private PlanNode makeGeneralSelect(SelectClause selClause,
-                                       List<SelectClause> enclosingSelects)
-            throws IOException {
+    private PlanNode planFromClause(SelectClause selClause) throws IOException {
         FromClause fromClause = selClause.getFromClause();
         PlanNode planNode = null;
-        if (fromClause == null) {
-            System.out.println(selClause.getSelectValues().get(0).getAlias());
-        }
-        else if (fromClause.isBaseTable()) {
+        if (fromClause.isBaseTable()) {
             planNode = makeSimpleSelect(fromClause.getTableName(),
-                    selClause.getWhereExpr(), null);
-        } else {
-            planNode = makeGeneralSelect(fromClause.getSelectClause(), null);
+                    null, null);
+        }
+        else if (fromClause.isJoinExpr()){
+            planNode = makeJoinExpression(fromClause);
+        }
+        else {
+            planNode = makeGeneralSelect(fromClause.getSelectClause());
             planNode = new RenameNode(planNode, fromClause.getResultName());
         }
-
-        List<SelectValue> columns = selClause.getSelectValues();
-        // TODO: check to see if we have a trivial projection
-        ProjectNode projNode = new ProjectNode(planNode, columns);
-        projNode.initialize();
-        planNode = projNode;
-
-        List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
-        if (!orderExpressions.isEmpty()) {
-            planNode = (PlanNode)new SortNode((PlanNode)projNode, orderExpressions);
-            planNode.initialize();
-        }
-
         return planNode;
     }
+
+    private PlanNode makeGeneralSelect(SelectClause selClause) throws IOException {
+        PlanNode res = planFromClause(selClause);
+        res = planWhereClause(res, selClause);
+        res = planGroupingAggregation(res, selClause);
+        res = planHavingClause(res, selClause);
+        res = planProjectClause(res, selClause);
+        res = planOrderByClause(res, selClause);
+        return res;
+    }
+
+    private PlanNode planWhereClause(PlanNode child, SelectClause selClause) throws IOException {
+        if (selClause.getWhereExpr() == null) {
+            return child;
+        }
+        SelectNode selNode = new SimpleFilterNode(child, selClause.getWhereExpr());
+        return selNode;
+    }
+
+    private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause) {
+        /*
+        List<Expression> groupByExprs = selClause.getGroupByExprs();
+        Map<String, FunctionCall> groupAggregates = new HashMap<String, FunctionCall>();
+
+        System.out.println(groupByExprs);
+        for (SelectValue sv: selClause.getSelectValues()) {
+            if (!sv.isExpression())
+                continue;
+            Expression e = sv.getExpression();
+//            System.out.println(e);
+            if (e instanceof FunctionCall) {
+//                System.out.println(e);
+                Function f = ((FunctionCall)e).getFunction();
+                System.out.println(f);
+                if (f instanceof AggregateFunction) {
+                    AggregateFunction af = (AggregateFunction)f;
+                    groupAggregates.put(e.toString(), (FunctionCall)e);
+                    //System.out.println("yodl");
+                }
+            }
+        }
+
+        HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(planNode, groupByExprs, groupAggregates);
+        hashNode.initialize();
+        planNode = (PlanNode) hashNode;
+        return planNode;*/
+        return child;
+    }
+
+    private PlanNode planHavingClause(PlanNode child, SelectClause selClause) {
+        if (selClause.getHavingExpr() == null) {
+            return child;
+        }
+        SelectNode selNode = new SimpleFilterNode(child, selClause.getHavingExpr());
+        return selNode;
+    }
+
+    private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
+        List<SelectValue> columns = selClause.getSelectValues();
+        // TODO: check to see if we have a trivial projection
+        ProjectNode projNode = new ProjectNode(child, columns);
+        return projNode;
+    }
+
+    private PlanNode planOrderByClause(PlanNode child, SelectClause selClause) {
+        List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
+        if (!orderExpressions.isEmpty()) {
+            return new SortNode(child, orderExpressions);
+        }
+        return child;
+    }
+
+    private PlanNode makeJoinExpression(FromClause joinClause) throws IOException {
+// TODO: Handle for more complicated joins
+        FromClause fromLeft = joinClause.getLeftChild();
+        FromClause fromRight = joinClause.getRightChild();
+        PlanNode leftNode, rightNode;
+        if (fromLeft.isBaseTable()) {
+            leftNode = makeSimpleSelect(fromLeft.getTableName(),
+                    null, null);
+        }
+        else {
+            leftNode = makeGeneralSelect(fromLeft.getSelectClause());
+        }
+        if (fromRight.isBaseTable()) {
+            rightNode = makeSimpleSelect(fromRight.getTableName(),
+                    null, null);
+        }
+        else {
+            rightNode = makeGeneralSelect(fromRight.getSelectClause());
+        }
+        NestedLoopsJoinNode ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                joinClause.getJoinType(), joinClause.getOnExpression());
+        ret.prepare();
+        return ret;
+    }
+
 
     /**
      * Constructs a simple select plan that reads directly from a table, with
