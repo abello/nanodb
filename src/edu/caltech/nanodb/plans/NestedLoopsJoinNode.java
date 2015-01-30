@@ -31,7 +31,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     /** Set to true when we have exhausted all tuples from our subplans. */
     private boolean done;
 
-
     public NestedLoopsJoinNode(PlanNode leftChild, PlanNode rightChild,
                 JoinType joinType, Expression predicate) {
 
@@ -178,8 +177,19 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             return null;
 
         while (getTuplesToJoin()) {
-            if (canJoinTuples())
-                return joinTuples(leftTuple, rightTuple);
+            switch (super.joinType) {
+                case INNER:
+                    if (canJoinTuples()) {
+                        return joinTuples(leftTuple, rightTuple);
+                    }
+                    break;
+
+                case LEFT_OUTER:
+                case SEMIJOIN:
+                case ANTIJOIN:
+                default:
+                    throw new IllegalArgumentException("This type of join is not yet supported!");
+            }
         }
 
         return null;
@@ -194,8 +204,55 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
      *         {@code false} if no more pairs of tuples are available to join.
      */
     private boolean getTuplesToJoin() throws IOException {
-        // TODO:  Implement
-        return false;
+        PlanNode rightChild = super.rightChild;
+        PlanNode leftChild = super.leftChild;
+        logger.debug("getUplesToJoin() called!");
+
+        // If we're done, return here, no need to do more stuff
+        if (done) {
+            logger.debug("getTuplesToJoin DONE, but still called");
+            return false;
+        }
+
+        // If both iterators are null and we're not done, then we're in the very first iteration
+        if (rightTuple == null && leftTuple == null) {
+            leftTuple = leftChild.getNextTuple();
+            rightTuple = rightChild.getNextTuple();
+
+            // This is just in case somethign weird is going on (like joining 0-row tables)
+            return (leftTuple != null && rightTuple != null);
+        }
+
+        // If we're here, we know that we're in the middle of an iteration
+
+        // Move the next inner loop
+        Tuple nextRightTuple = rightChild.getNextTuple();
+
+        // If the inner iterator is exhausted, just reset it back to the beginning and
+        // move the outer iterator by 1
+        if (nextRightTuple == null) {
+            // If the outer loop can't advance, we're done.
+            leftTuple = leftChild.getNextTuple();
+            if (leftTuple == null) {
+                logger.debug("getTuplesToJoin DONE");
+                done = true;
+                return false;
+            }
+
+            // At this point we've advanced the outer tuple. We advance the inner one too, to keep looping.
+
+            // TODO: Verify that initialize doesn't set the iterator to the first tuple. Otherwise we're skipping a
+            // tuple.
+            rightChild.initialize();
+            rightTuple = rightChild.getNextTuple();
+
+            return true;
+        }
+
+
+        // At this point, we know that none of the iterators are exhausted. Just update the outer tuple
+        rightTuple = nextRightTuple;
+        return true;
     }
 
 
