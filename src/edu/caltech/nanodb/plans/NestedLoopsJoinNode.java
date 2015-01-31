@@ -196,19 +196,19 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     break;
 
                 case LEFT_OUTER:
-                    if (canJoinTuples()) {
-                        matchedRow = true;
-                        Tuple result = joinTuples(leftTuple, rightTuple);
-                        logger.debug(leftTuple);
-                        return result;
-                    }
-                    else if (padNull == true) {
+                    if (padNull == true) {
                         logger.debug("Padding null");
                         TupleLiteral rightTupleNulls = new TupleLiteral(rightTuple);
                         for (int i = 0; i < rightTupleNulls.getColumnCount(); i++) {
                             rightTupleNulls.setColumnValue(i, null);
                         }
                         padNull = false;
+                    }
+                    else if (canJoinTuples()) {
+                        matchedRow = true;
+                        Tuple result = joinTuples(leftTuple, rightTuple);
+                        logger.debug(leftTuple);
+                        return result;
                     }
                     break;
 
@@ -260,9 +260,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // If the inner iterator is exhausted, just reset it back to the beginning and
         // move the outer iterator by 1
         if (nextRightTuple == null) {
-            // If the outer loop can't advance, we're done.
-            leftTuple = leftChild.getNextTuple();
-
             if (joinType == JoinType.LEFT_OUTER) {
                 // If we don't have a matched row at this point, we need to add a null-padded row
                 if (matchedRow == false) {
@@ -271,14 +268,19 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                 }
             }
 
-            // Reset matchedRow for new row in outer loop
-            matchedRow = false;
+            // Advance outer loop
+            leftTuple = leftChild.getNextTuple();
 
+            // If the outer loop can't advance, we're done.
             if (leftTuple == null) {
                 logger.debug("getTuplesToJoin DONE");
                 done = true;
                 return false;
             }
+
+
+            // Reset matchedRow for new row in outer loop
+            matchedRow = false;
 
             // At this point we've advanced the outer tuple. We advance the inner one too, to keep looping.
 
