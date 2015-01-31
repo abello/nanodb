@@ -4,6 +4,7 @@ package edu.caltech.nanodb.plans;
 import java.io.IOException;
 import java.util.List;
 
+import edu.caltech.nanodb.expressions.TupleLiteral;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.Expression;
@@ -30,6 +31,14 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
 
     /** Set to true when we have exhausted all tuples from our subplans. */
     private boolean done;
+
+    /** Checking whether the outer loop had a matching row. Pretty gross to keep
+     * track of state like this, but not sure if there a simple prettier way */
+    private boolean matchedRow;
+
+    /** If this flag is set to true, padd the outer column with nulls, indicating that we're inserting it
+     * without a matching row from the other table */
+    private boolean padNull;
 
     public NestedLoopsJoinNode(PlanNode leftChild, PlanNode rightChild,
                 JoinType joinType, Expression predicate) {
@@ -180,11 +189,29 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             switch (super.joinType) {
                 case INNER:
                     if (canJoinTuples()) {
-                        return joinTuples(leftTuple, rightTuple);
+                        Tuple result = joinTuples(leftTuple, rightTuple);
+                        logger.debug(leftTuple);
+                        return result;
                     }
                     break;
 
                 case LEFT_OUTER:
+                    if (canJoinTuples()) {
+                        matchedRow = true;
+                        Tuple result = joinTuples(leftTuple, rightTuple);
+                        logger.debug(leftTuple);
+                        return result;
+                    }
+                    else if (padNull == true) {
+                        logger.debug("Padding null");
+                        TupleLiteral rightTupleNulls = new TupleLiteral(rightTuple);
+                        for (int i = 0; i < rightTupleNulls.getColumnCount(); i++) {
+                            rightTupleNulls.setColumnValue(i, null);
+                        }
+                        padNull = false;
+                    }
+                    break;
+
                 case SEMIJOIN:
                 case ANTIJOIN:
                 default:
@@ -206,7 +233,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     private boolean getTuplesToJoin() throws IOException {
         PlanNode rightChild = super.rightChild;
         PlanNode leftChild = super.leftChild;
-        logger.debug("getUplesToJoin() called!");
+        // logger.debug("getUplesToJoin() called!");
 
         // If we're done, return here, no need to do more stuff
         if (done) {
@@ -216,10 +243,12 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
 
         // If both iterators are null and we're not done, then we're in the very first iteration
         if (rightTuple == null && leftTuple == null) {
+            logger.debug("Just started loop iterators");
             leftTuple = leftChild.getNextTuple();
+            matchedRow = false;
             rightTuple = rightChild.getNextTuple();
 
-            // This is just in case somethign weird is going on (like joining 0-row tables)
+            // This is just in case something weird is going on (like joining 0-row tables)
             return (leftTuple != null && rightTuple != null);
         }
 
@@ -233,6 +262,18 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         if (nextRightTuple == null) {
             // If the outer loop can't advance, we're done.
             leftTuple = leftChild.getNextTuple();
+
+            if (joinType == JoinType.LEFT_OUTER) {
+                // If we don't have a matched row at this point, we need to add a null-padded row
+                if (matchedRow == false) {
+                    padNull = true;
+                    return true;
+                }
+            }
+
+            // Reset matchedRow for new row in outer loop
+            matchedRow = false;
+
             if (leftTuple == null) {
                 logger.debug("getTuplesToJoin DONE");
                 done = true;
