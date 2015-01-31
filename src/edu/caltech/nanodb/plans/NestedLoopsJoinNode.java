@@ -206,7 +206,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                         //for (int i = 0; i < rightTupleNulls.getColumnCount(); i++) {
                         //    rightTupleNulls.setColumnValue(i, null);
                         //}
-                        padNull = false;
 
                         Tuple result = joinTuples(leftTuple, rightTupleNulls);
                         return result;
@@ -267,13 +266,14 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // If the inner iterator is exhausted, just reset it back to the beginning and
         // move the outer iterator by 1
         if (nextRightTuple == null) {
-            if (joinType == JoinType.LEFT_OUTER) {
+            if (joinType == JoinType.LEFT_OUTER && padNull != true) {
                 // If we don't have a matched row at this point, we need to add a null-padded row
                 if (matchedRow == false) {
                     padNull = true;
                     return true;
                 }
             }
+             padNull = false;
 
             // Advance outer loop
             leftTuple = leftChild.getNextTuple();
