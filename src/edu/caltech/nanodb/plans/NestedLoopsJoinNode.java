@@ -198,11 +198,18 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                 case LEFT_OUTER:
                     if (padNull == true) {
                         logger.debug("Padding null");
-                        TupleLiteral rightTupleNulls = new TupleLiteral(rightTuple);
-                        for (int i = 0; i < rightTupleNulls.getColumnCount(); i++) {
-                            rightTupleNulls.setColumnValue(i, null);
-                        }
+                        TupleLiteral rightTupleNulls = new TupleLiteral(rightTuple.getColumnCount());
+                        logger.debug("Created new tuple literal with null columns");
+                        //logger.debug("Created new null tupleLiteral");
+                        //rightTupleNulls.appendTuple(rightTuple);
+                        //logger.debug("Appended to tuple literal");
+                        //for (int i = 0; i < rightTupleNulls.getColumnCount(); i++) {
+                        //    rightTupleNulls.setColumnValue(i, null);
+                        //}
                         padNull = false;
+
+                        Tuple result = joinTuples(leftTuple, rightTupleNulls);
+                        return result;
                     }
                     else if (canJoinTuples()) {
                         matchedRow = true;
