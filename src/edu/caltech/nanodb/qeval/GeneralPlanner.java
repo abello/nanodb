@@ -149,8 +149,10 @@ public class GeneralPlanner implements Planner {
     }
 
     private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
+        if (selClause.isTrivialProject()) {
+            return child;
+        }
         List<SelectValue> columns = selClause.getSelectValues();
-        // TODO: check to see if we have a trivial projection
         ProjectNode projNode = new ProjectNode(child, columns);
         return projNode;
     }
@@ -163,11 +165,13 @@ public class GeneralPlanner implements Planner {
         return child;
     }
 
-    private PlanNode makeJoinExpression(FromClause joinClause) throws IOException {
-// TODO: Handle for more complicated joins
-        FromClause fromLeft = joinClause.getLeftChild();
-        FromClause fromRight = joinClause.getRightChild();
+    private PlanNode makeJoinExpression(FromClause fromClause) throws IOException {
+        // TODO: Handle for more complicated joins
+        FromClause fromLeft = fromClause.getLeftChild();
+        FromClause fromRight = fromClause.getRightChild();
         PlanNode leftNode, rightNode;
+        
+        // Extract plan nodes from the left and right joins
         if (fromLeft.isBaseTable()) {
             leftNode = makeSimpleSelect(fromLeft.getTableName(),
                     null, null);
@@ -183,34 +187,60 @@ public class GeneralPlanner implements Planner {
             rightNode = makeGeneralSelect(fromRight.getSelectClause());
         }
         
-        PlanNode ret = null;
-        if (joinClause.getConditionType() == FromClause.JoinConditionType.NATURAL_JOIN) {
-            Schema leftSchema, rightSchema;
-            leftSchema = fromLeft.getPreparedSchema();
-            rightSchema = fromRight.getPreparedSchema();
-            System.out.println(leftSchema + "    " + rightSchema);
-            Set<String> commonCols = leftSchema.getCommonColumnNames(rightSchema);
-            Collection<Expression> compareOperators = new HashSet<Expression>();
-            for (String col : commonCols) {
-                ColumnName colNameLeft = new ColumnName(fromLeft.getTableName(), col);
-                ColumnName colNameRight = new ColumnName(fromRight.getTableName(), col);
-                ColumnValue colValLeft = new ColumnValue(colNameLeft);
-                ColumnValue colValRight = new ColumnValue(colNameRight);
-                compareOperators.add(new CompareOperator(CompareOperator.Type.EQUALS, colValLeft, colValRight));
-            }
-            BooleanOperator onExpr = new BooleanOperator(BooleanOperator.Type.AND_EXPR, compareOperators);
-            ret = new NestedLoopsJoinNode(leftNode, rightNode,
-                    joinClause.getJoinType(), onExpr);
-            ret = (PlanNode) new ProjectNode(ret, joinClause.getPreparedSelectValues());
+        // Check for different join conditions and handle accordingly
+        PlanNode ret;
+        Expression onExpr;
+        switch (fromClause.getConditionType()) {
+            case JOIN_ON_EXPR:
+                ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                        fromClause.getJoinType(), fromClause.getOnExpression());
+                break;
+            case JOIN_USING:
+                List<String> usingCols = fromClause.getUsingNames();
+                onExpr = getColumnsEqualityExpression(
+                        fromLeft.getTableName(), fromRight.getTableName(), 
+                        usingCols);
+                ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                        fromClause.getJoinType(), onExpr);
+                // Project the table to the correct schema
+                ret = (PlanNode) new ProjectNode(ret, 
+                        fromClause.getPreparedSelectValues());
+                break;
+            case NATURAL_JOIN:
+                Schema leftSchema, rightSchema;
+                leftSchema = fromLeft.getPreparedSchema();
+                rightSchema = fromRight.getPreparedSchema();
+                System.out.println(leftSchema + "    " + rightSchema);
+                Set<String> commonCols = leftSchema.getCommonColumnNames(rightSchema);
+                // Get the on expression on which the tables should be joined
+                onExpr = getColumnsEqualityExpression(
+                        fromLeft.getTableName(), fromRight.getTableName(), 
+                        commonCols);
+                ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                        fromClause.getJoinType(), onExpr);
+                // Project the table to the correct schema
+                ret = (PlanNode) new ProjectNode(ret, 
+                        fromClause.getPreparedSelectValues());
+                break;
+            default:
+                ret = null;
+                break;
         }
-        else {
-            ret = new NestedLoopsJoinNode(leftNode, rightNode,
-                    joinClause.getJoinType(), joinClause.getOnExpression());
-        }
-        
-        //System.out.println(((CompareOperator)joinClause.getOnExpression()).getLeftExpression().getClass());
         
         return ret;
+    }
+    
+    private Expression getColumnsEqualityExpression(String leftTable, String rightTable,
+            Collection<String> cols) {
+        Collection<Expression> compareOperators = new HashSet<Expression>();
+        for (String col : cols) {
+            ColumnName colNameLeft = new ColumnName(leftTable, col);
+            ColumnName colNameRight = new ColumnName(rightTable, col);
+            ColumnValue colValLeft = new ColumnValue(colNameLeft);
+            ColumnValue colValRight = new ColumnValue(colNameRight);
+            compareOperators.add(new CompareOperator(CompareOperator.Type.EQUALS, colValLeft, colValRight));
+        }
+        return new BooleanOperator(BooleanOperator.Type.AND_EXPR, compareOperators); 
     }
 
 
