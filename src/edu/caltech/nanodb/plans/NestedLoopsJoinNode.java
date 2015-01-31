@@ -260,8 +260,15 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
 
         // If we're here, we know that we're in the middle of an iteration
 
-        // Move the next inner loop
-        Tuple nextRightTuple = rightChild.getNextTuple();
+        // Move the next inner loop (unless we're coming from a padNull round, in which case we shouldn't try
+        // to advance the right tuple)
+        Tuple nextRightTuple;
+        if (padNull == false) {
+            nextRightTuple = rightChild.getNextTuple();
+        }
+        else {
+            nextRightTuple = null;
+        }
 
         // If the inner iterator is exhausted, just reset it back to the beginning and
         // move the outer iterator by 1
