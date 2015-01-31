@@ -1,17 +1,30 @@
 package edu.caltech.nanodb.qeval;
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-import edu.caltech.nanodb.commands.SelectValue;
-import edu.caltech.nanodb.expressions.FunctionCall;
-import edu.caltech.nanodb.expressions.OrderByExpression;
-import edu.caltech.nanodb.functions.AggregateFunction;
-import edu.caltech.nanodb.functions.Function;
-import edu.caltech.nanodb.plans.*;
 import org.apache.log4j.Logger;
+
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.BooleanOperator;
+import edu.caltech.nanodb.expressions.ColumnName;
+import edu.caltech.nanodb.expressions.ColumnValue;
+import edu.caltech.nanodb.expressions.CompareOperator;
 import edu.caltech.nanodb.expressions.Expression;
+import edu.caltech.nanodb.expressions.OrderByExpression;
+import edu.caltech.nanodb.plans.FileScanNode;
+import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
+import edu.caltech.nanodb.plans.PlanNode;
+import edu.caltech.nanodb.plans.ProjectNode;
+import edu.caltech.nanodb.plans.RenameNode;
+import edu.caltech.nanodb.plans.SelectNode;
+import edu.caltech.nanodb.plans.SimpleFilterNode;
+import edu.caltech.nanodb.plans.SortNode;
+import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
 
@@ -169,9 +182,34 @@ public class GeneralPlanner implements Planner {
         else {
             rightNode = makeGeneralSelect(fromRight.getSelectClause());
         }
-        NestedLoopsJoinNode ret = new NestedLoopsJoinNode(leftNode, rightNode,
-                joinClause.getJoinType(), joinClause.getOnExpression());
-        ret.prepare();
+        
+        PlanNode ret = null;
+        if (joinClause.getConditionType() == FromClause.JoinConditionType.NATURAL_JOIN) {
+            Schema leftSchema, rightSchema;
+            leftSchema = fromLeft.getPreparedSchema();
+            rightSchema = fromRight.getPreparedSchema();
+            System.out.println(leftSchema + "    " + rightSchema);
+            Set<String> commonCols = leftSchema.getCommonColumnNames(rightSchema);
+            Collection<Expression> compareOperators = new HashSet<Expression>();
+            for (String col : commonCols) {
+                ColumnName colNameLeft = new ColumnName(fromLeft.getTableName(), col);
+                ColumnName colNameRight = new ColumnName(fromRight.getTableName(), col);
+                ColumnValue colValLeft = new ColumnValue(colNameLeft);
+                ColumnValue colValRight = new ColumnValue(colNameRight);
+                compareOperators.add(new CompareOperator(CompareOperator.Type.EQUALS, colValLeft, colValRight));
+            }
+            BooleanOperator onExpr = new BooleanOperator(BooleanOperator.Type.AND_EXPR, compareOperators);
+            ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                    joinClause.getJoinType(), onExpr);
+            ret = (PlanNode) new ProjectNode(ret, joinClause.getPreparedSelectValues());
+        }
+        else {
+            ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                    joinClause.getJoinType(), joinClause.getOnExpression());
+        }
+        
+        //System.out.println(((CompareOperator)joinClause.getOnExpression()).getLeftExpression().getClass());
+        
         return ret;
     }
 
