@@ -232,14 +232,14 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     }
                     break;
                 case ANTIJOIN:
-                    if (canJoinTuples()) {
+                    if (unMatchedRow) {
+                        unMatchedRow = false;
+                        return leftTuple;
+                    }
+                    else if (canJoinTuples()) {
                         matchedRow = true;
                         logger.debug(leftTuple);
                         breakInner = true;
-                    }
-                    else if (unMatchedRow) {
-                        unMatchedRow = false;
-                        return leftTuple;
                     }
                     break;
                 default:
