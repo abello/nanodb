@@ -252,10 +252,8 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             logger.debug("Just started loop iterators");
             leftTuple = leftChild.getNextTuple();
             matchedRow = false;
-            rightTuple = rightChild.getNextTuple();
-
-            // This is just in case something weird is going on (like joining 0-row tables)
-            return (leftTuple != null && rightTuple != null);
+            padNull = false;
+            //rightTuple = rightChild.getNextTuple();
         }
 
         // If we're here, we know that we're in the middle of an iteration
@@ -273,6 +271,8 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // If the inner iterator is exhausted, just reset it back to the beginning and
         // move the outer iterator by 1
         if (nextRightTuple == null) {
+            logger.debug("nextRightTuple is null");
+            // TODO: != true
             if (joinType == JoinType.LEFT_OUTER && padNull != true) {
                 // If we don't have a matched row at this point, we need to add a null-padded row
                 if (matchedRow == false) {
@@ -280,7 +280,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     return true;
                 }
             }
-             padNull = false;
 
             // Advance outer loop
             leftTuple = leftChild.getNextTuple();
@@ -302,6 +301,17 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             // tuple.
             rightChild.initialize();
             rightTuple = rightChild.getNextTuple();
+
+            // TODO: Check if we're doing left outer or inner join
+            if (rightTuple == null) {
+                if (joinType != JoinType.LEFT_OUTER) {
+                    return false;
+                }
+                padNull = true;
+            }
+            else {
+                padNull = false;
+            }
 
             return true;
         }
