@@ -486,7 +486,7 @@ setup_testSimpleJoins = \
     INSERT INTO test_joins_dup_1 VALUES (20, 2); \
     INSERT INTO test_joins_dup_1 VALUES (30, 3); \
     INSERT INTO test_joins_dup_1 VALUES (40, 4); \
-    CREATE TABLE test_joins_dup_1 ( \
+    CREATE TABLE test_joins_dup_2 ( \
         b INTEGER, \
         c INTEGER \
     ); \
