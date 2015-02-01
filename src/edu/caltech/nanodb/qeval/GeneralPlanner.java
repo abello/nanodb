@@ -193,23 +193,16 @@ public class GeneralPlanner implements Planner {
         Expression onExpr;
         switch (fromClause.getConditionType()) {
             case JOIN_ON_EXPR:
-                if (fromClause.getJoinType() == JoinType.RIGHT_OUTER) {
-                    ret = new NestedLoopsJoinNode(rightNode, leftNode,
-                            JoinType.LEFT_OUTER, 
-                            fromClause.getOnExpression());
-                }
-                else {
-                    ret = new NestedLoopsJoinNode(leftNode, rightNode,
-                            fromClause.getJoinType(), 
-                            fromClause.getOnExpression());
-                }
+                ret = getNestedLoopsJoinNode(leftNode, rightNode,
+                        fromClause.getJoinType(), 
+                        fromClause.getOnExpression());
                 break;
             case JOIN_USING:
                 List<String> usingCols = fromClause.getUsingNames();
                 onExpr = getColumnsEqualityExpression(
                         fromLeft.getTableName(), fromRight.getTableName(), 
                         usingCols);
-                ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                ret = getNestedLoopsJoinNode(leftNode, rightNode,
                         fromClause.getJoinType(), onExpr);
                 // Project the table to the correct schema
                 ret = (PlanNode) new ProjectNode(ret, 
@@ -236,6 +229,20 @@ public class GeneralPlanner implements Planner {
                 break;
         }
         
+        return ret;
+    }
+    
+    private PlanNode getNestedLoopsJoinNode(PlanNode leftNode, 
+            PlanNode rightNode, JoinType joinType, Expression onExpr) {
+        PlanNode ret;
+        if (joinType == JoinType.RIGHT_OUTER) {
+            ret = new NestedLoopsJoinNode(rightNode, leftNode,
+                    JoinType.LEFT_OUTER, onExpr);
+        }
+        else {
+            ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                    joinType, onExpr);
+        }
         return ret;
     }
     
