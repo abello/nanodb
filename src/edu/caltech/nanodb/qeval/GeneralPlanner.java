@@ -101,11 +101,11 @@ public class GeneralPlanner implements Planner {
 
     private PlanNode makeGeneralSelect(SelectClause selClause) throws IOException {
         PlanNode res = planFromClause(selClause);
-        //res = planWhereClause(res, selClause);
+        res = planWhereClause(res, selClause);
         res = planGroupingAggregation(res, selClause);
-        //res = planHavingClause(res, selClause);
+        res = planHavingClause(res, selClause);
         res = planProjectClause(res, selClause);
-        //res = planOrderByClause(res, selClause);
+        res = planOrderByClause(res, selClause);
         return res;
     }
 
@@ -134,6 +134,19 @@ public class GeneralPlanner implements Planner {
             sv.setExpression(e);
         }
 
+        // Update the having expression
+        Expression e = selClause.getHavingExpr().traverse(processor);
+        selClause.setHavingExpr(e);
+
+        if (selClause.getWhereExpr() != null) {
+            processor.setErrorMessage("Aggregate functions in WHERE clauses are not allowed");
+            selClause.getWhereExpr().traverse(processor);
+        }
+        if (selClause.getFromClause() != null && selClause.getFromClause().getClauseType() ==
+                FromClause.ClauseType.JOIN_EXPR && selClause.getFromClause().getOnExpression() != null) {
+            processor.setErrorMessage("Aggregate functions in ON clauses are not allowed");
+            selClause.getFromClause().getOnExpression().traverse(processor);
+        }
         HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(child, groupByExprs, processor.getGroupAggregates());
         return hashNode;
     }
