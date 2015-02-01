@@ -135,4 +135,8 @@ public class TestSimpleJoins extends SqlTestCase {
      * ************************************************************
      */
 
+    // TODO: Natural join tests (in different class)
+    // TODO: "USING" tests (in different class)
+
+
 }
