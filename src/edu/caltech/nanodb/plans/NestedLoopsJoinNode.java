@@ -232,6 +232,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     break;
                 case ANTIJOIN:
                     if (canJoinTuples()) {
+                        matchedRow = true;
                         logger.debug(leftTuple);
                         breakInner = true;
                     }
@@ -332,7 +333,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                 return false;
             }
 
-
             // Reset matchedRow for new row in outer loop
             matchedRow = false;
 
@@ -343,8 +343,12 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             rightChild.initialize();
             rightTuple = rightChild.getNextTuple();
 
+            // If right relation is empty
             if (rightTuple == null) {
-                if (joinType != JoinType.LEFT_OUTER) {
+
+                // For the following joins, if the right relation is empty, we're done
+                if (joinType == JoinType.INNER || joinType == JoinType.CROSS || joinType == JoinType.SEMIJOIN) {
+                    done = true;
                     return false;
                 }
                 padNull = true;
