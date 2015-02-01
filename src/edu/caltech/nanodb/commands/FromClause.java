@@ -502,7 +502,7 @@ public class FromClause {
 
         return joinType;
     }
-
+    
 
     /**
      * Returns true if this join clause is an outer join, false otherwise.

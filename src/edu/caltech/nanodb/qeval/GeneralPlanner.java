@@ -24,6 +24,7 @@ import edu.caltech.nanodb.plans.RenameNode;
 import edu.caltech.nanodb.plans.SelectNode;
 import edu.caltech.nanodb.plans.SimpleFilterNode;
 import edu.caltech.nanodb.plans.SortNode;
+import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
@@ -192,8 +193,16 @@ public class GeneralPlanner implements Planner {
         Expression onExpr;
         switch (fromClause.getConditionType()) {
             case JOIN_ON_EXPR:
-                ret = new NestedLoopsJoinNode(leftNode, rightNode,
-                        fromClause.getJoinType(), fromClause.getOnExpression());
+                if (fromClause.getJoinType() == JoinType.RIGHT_OUTER) {
+                    ret = new NestedLoopsJoinNode(rightNode, leftNode,
+                            JoinType.LEFT_OUTER, 
+                            fromClause.getOnExpression());
+                }
+                else {
+                    ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                            fromClause.getJoinType(), 
+                            fromClause.getOnExpression());
+                }
                 break;
             case JOIN_USING:
                 List<String> usingCols = fromClause.getUsingNames();
