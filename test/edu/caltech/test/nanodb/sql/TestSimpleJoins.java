@@ -19,26 +19,62 @@ public class TestSimpleJoins extends SqlTestCase {
 
 
     /**
-     * This test performs some simple projects that perform arithmetic on the
-     * column values, to see if the queries produce the expected results.
-     *
-     * @throws Exception if any query parsing or execution issues occur.
+     * This test performs a simple inner join between two non-empty tables. Not every column
+     * should join.
      */
-    public void testProjectMath() throws Throwable {
-        // Columns a - 10 as am, c * 3 as cm
+    public void testInnerSimple() throws Throwable {
         TupleLiteral[] expected = {
-            new TupleLiteral(-9,   30),
-            new TupleLiteral(-8,   60),
-            new TupleLiteral(-7,   90),
-            new TupleLiteral(-6, null),
-            new TupleLiteral(-5,  120),
-            new TupleLiteral(-4,  150)
+            new TupleLiteral(10, 1, 1, 100),
+            new TupleLiteral(20, 2, 2, 200),
+            new TupleLiteral(30, 3, 3, 300),
         };
 
         CommandResult result;
 
-        result = server.doCommand(
-            "SELECT a - 10 AS am, c * 3 AS cm FROM test_select_project", true);
+        result = server.doCommand("SELECT * FROM test_joins_1 AS t1 INNER JOIN test_joins_2 AS t2 ON t1.b = t2.b", true);
+        assert checkUnorderedResults(expected, result);
+    }
+
+    /**
+     * This test performs an inner join between a empty table (right) and a non-empty table.
+     * @throws Throwable
+     */
+    public void testInnerEmptyRight() throws Throwable {
+        TupleLiteral[] expected = {
+        };
+
+        CommandResult result;
+
+        result = server.doCommand("SELECT * FROM test_joins_1 AS t1 INNER JOIN test_joins_empty AS t2 ON t1.b = t2.b", true);
+        assert checkUnorderedResults(expected, result);
+    }
+
+    /**
+     * This test performs an inner join between a empty table (left) and a non-empty table.
+     * @throws Throwable
+     */
+    public void testInnerEmptyLeft() throws Throwable {
+        TupleLiteral[] expected = {
+        };
+
+        CommandResult result;
+
+        result = server.doCommand("SELECT * FROM test_joins_empty AS t1 INNER JOIN test_joins_1 AS t2 ON t1.b = t2.b", true);
+        assert checkUnorderedResults(expected, result);
+    }
+
+
+    /**
+     * This test performs an inner join between two empty tables;
+     * @throws Throwable
+     */
+    public void testInnerEmptyBoth() throws Throwable {
+        TupleLiteral[] expected = {
+        };
+
+        CommandResult result;
+
+        result = server.doCommand("SELECT * FROM test_joins_empty AS t1 INNER JOIN test_joins_empty_2 AS t2 ON t1.b = t2.b", true);
         assert checkUnorderedResults(expected, result);
     }
 

@@ -450,3 +450,34 @@ setup_testHaving = \
     INSERT INTO test_having VALUES (26, 4190, 3180, 98.61913223134815); \
     INSERT INTO test_having VALUES (39, 6470, 16604, 86.22655630090722); \
     INSERT INTO test_having VALUES (8, 4930, 11387, 89.96368130774295);
+
+
+# This setup SQL is used for testing joins
+setup_testSimpleJoins = \
+    CREATE TABLE test_joins_1 ( \
+        a INTEGER, \
+        b INTEGER \
+    ); \
+    INSERT INTO test_joins_1 VALUES (0, 0); \
+    INSERT INTO test_joins_1 VALUES (10, 1); \
+    INSERT INTO test_joins_1 VALUES (20, 2); \
+    INSERT INTO test_joins_1 VALUES (30, 3); \
+    CREATE TABLE test_joins_2 ( \
+        b INTEGER, \
+        c INTEGER \
+    ); \
+    INSERT INTO test_joins_2 VALUES (1, 100); \
+    INSERT INTO test_joins_2 VALUES (2, 200); \
+    INSERT INTO test_joins_2 VALUES (3, 300); \
+    INSERT INTO test_joins_2 VALUES (4, 400); \
+    CREATE TABLE test_joins_empty ( \
+        b INTEGER, \
+        c INTEGER  \
+    ); \
+    CREATE TABLE test_joins_empty_2 ( \
+        b INTEGER, \
+        c INTEGER  \
+    );
+
+
+
