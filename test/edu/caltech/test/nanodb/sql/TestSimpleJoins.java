@@ -17,6 +17,11 @@ public class TestSimpleJoins extends SqlTestCase {
     }
 
 
+    /**
+     * ************************************************************
+     * ********************* INNER JOIN TESTS *********************
+     * ************************************************************
+     */
 
     /**
      * This test performs a simple inner join between two non-empty tables. Not every column
@@ -77,5 +82,61 @@ public class TestSimpleJoins extends SqlTestCase {
         result = server.doCommand("SELECT * FROM test_joins_empty AS t1 INNER JOIN test_joins_empty_2 AS t2 ON t1.b = t2.b", true);
         assert checkUnorderedResults(expected, result);
     }
+
+
+    /**
+     * This tests performs an inner join between two nonempty tables where multiple rows of
+     * the right table would join.
+     * @throws Throwable
+     */
+    public void testInnerDupRight() throws Throwable {
+        TupleLiteral[] expected = {
+                new TupleLiteral(10, 1, 1, 100),
+                new TupleLiteral(20, 2, 2, 200),
+                new TupleLiteral(20, 2, 2, 202),
+                new TupleLiteral(30, 3, 3, 300),
+        };
+
+        CommandResult result;
+
+        result = server.doCommand("SELECT * FROM test_joins_dup_1 AS t1 INNER JOIN test_joins_dup_2 AS t2 ON t1.b = t2.b", true);
+        assert checkUnorderedResults(expected, result);
+    }
+
+
+    /**
+     * This tests performs an inner join between two nonempty tables where multiple rows of
+     * the left table would join.
+     * @throws Throwable
+     */
+    public void testInnerDupLeft() throws Throwable {
+        TupleLiteral[] expected = {
+                new TupleLiteral(10, 1, 1, 100),
+                new TupleLiteral(20, 2, 2, 200),
+                new TupleLiteral(22, 2, 2, 200),
+                new TupleLiteral(30, 3, 3, 300),
+        };
+
+        CommandResult result;
+
+        result = server.doCommand("SELECT * FROM test_joins_dup_3 AS t1 INNER JOIN test_joins_dup_4 AS t2 ON t1.b = t2.b", true);
+        assert checkUnorderedResults(expected, result);
+    }
+
+    /**
+     * ************************************************************
+     * ********************* LEFT OUTER JOIN TESTS ****************
+     * ************************************************************
+     */
+
+    /**
+     * ************************************************************
+     * ********************* RIGHT OUTER JOIN TESTS ***************
+     * ************************************************************
+     */
+
+    // TODO: Natural join tests (in different class)
+    // TODO: "USING" tests (in different class)
+
 
 }
