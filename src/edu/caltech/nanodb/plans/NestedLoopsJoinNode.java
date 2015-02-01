@@ -201,6 +201,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     break;
 
                 case LEFT_OUTER:
+                    // TODO: Reset padNull in here instead
                     if (padNull == true) {
                         logger.debug("Padding null");
                         TupleLiteral rightTupleNulls = new TupleLiteral(rightChild.getSchema().getColumnInfos().size());
