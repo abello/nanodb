@@ -40,6 +40,9 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
      * without a matching row from the other table */
     private boolean padNull;
 
+    /** Flag to break inner loop */
+    private boolean breakInner;
+
     public NestedLoopsJoinNode(PlanNode leftChild, PlanNode rightChild,
                 JoinType joinType, Expression predicate) {
 
@@ -190,7 +193,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                 case INNER:
                     if (canJoinTuples()) {
                         Tuple result = joinTuples(leftTuple, rightTuple);
-                        logger.debug(leftTuple);
                         return result;
                     }
                     break;
@@ -219,6 +221,12 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     break;
 
                 case SEMIJOIN:
+                    if (canJoinTuples()) {
+                        logger.debug(leftTuple);
+                        breakInner = true;
+                        return leftTuple;
+                    }
+                    break;
                 case ANTIJOIN:
                 default:
                     throw new IllegalArgumentException("This type of join is not yet supported!");
@@ -253,6 +261,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             leftTuple = leftChild.getNextTuple();
             matchedRow = false;
             padNull = false;
+            breakInner = false;
 
             // If the left tuple is null, we're done (for both LOJ and IJ)
             if (leftTuple == null) {
@@ -271,6 +280,13 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         }
         else {
             nextRightTuple = null;
+        }
+
+        /** If we're told to break, update rightTuple and return true iff it's non-null */
+        if (breakInner  == true) {
+            rightTuple = nextRightTuple;
+            breakInner = false;
+            return (nextRightTuple != null);
         }
 
         // If the inner iterator is exhausted, just reset it back to the beginning and
@@ -307,7 +323,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             rightChild.initialize();
             rightTuple = rightChild.getNextTuple();
 
-            // TODO: Check if we're doing left outer or inner join
             if (rightTuple == null) {
                 if (joinType != JoinType.LEFT_OUTER) {
                     return false;
