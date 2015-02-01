@@ -253,7 +253,12 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             leftTuple = leftChild.getNextTuple();
             matchedRow = false;
             padNull = false;
-            //rightTuple = rightChild.getNextTuple();
+
+            // If the left tuple is null, we're done (for both LOJ and IJ)
+            if (leftTuple == null) {
+                done = true;
+                return false;
+            }
         }
 
         // If we're here, we know that we're in the middle of an iteration
