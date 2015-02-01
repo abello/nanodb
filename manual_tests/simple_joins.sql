@@ -17,7 +17,8 @@ SELECT * FROM t2;
 
 -- SELECT * FROM t1 JOIN t2 ON t1.b=t2.b;
 -- SELECT * FROM t1 LEFT OUTER JOIN t2 ON t1.b=t2.b;
-SELECT * FROM t1 right OUTER JOIN t2 ON t1.b=t2.b;
+-- SELECT * FROM t1 right OUTER JOIN t2 on t1.b = t2.b;
+SELECT * FROM t1 right OUTER JOIN t2 using b;
 -- SELECT * FROM t1 JOIN t2 USING (b);
 -- SELECT * FROM t1 SEMI-JOIN t2 ON t1.b=t2.b;
 -- SELECT * FROM t1 JOIN t2;
