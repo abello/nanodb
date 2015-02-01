@@ -43,6 +43,9 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     /** Flag to break inner loop */
     private boolean breakInner;
 
+    /** Flag to indicate whether this row has no matching rows in the other table */
+    private boolean unMatchedRow;
+
     public NestedLoopsJoinNode(PlanNode leftChild, PlanNode rightChild,
                 JoinType joinType, Expression predicate) {
 
@@ -228,6 +231,15 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     }
                     break;
                 case ANTIJOIN:
+                    if (canJoinTuples()) {
+                        logger.debug(leftTuple);
+                        breakInner = true;
+                    }
+                    else if (unMatchedRow) {
+                        unMatchedRow = false;
+                        return leftTuple;
+                    }
+                    break;
                 default:
                     throw new IllegalArgumentException("This type of join is not yet supported!");
             }
@@ -262,6 +274,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             matchedRow = false;
             padNull = false;
             breakInner = false;
+            unMatchedRow = false;
 
             // If the left tuple is null, we're done (for both LOJ and IJ)
             if (leftTuple == null) {
@@ -300,6 +313,13 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     padNull = true;
                     return true;
                 }
+            }
+
+            // If we're doing an ANTIJOIN and we've run out of right tuples AND there was no previous match
+            // this is an unmatched row
+            else if (joinType == JoinType.ANTIJOIN && matchedRow == false) {
+                unMatchedRow = true;
+                return true;
             }
 
             // Advance outer loop
