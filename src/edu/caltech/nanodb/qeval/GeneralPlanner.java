@@ -123,9 +123,6 @@ public class GeneralPlanner implements Planner {
     private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause) {
 
         List<Expression> groupByExprs = selClause.getGroupByExprs();
-        if (groupByExprs.isEmpty()) {
-            return child;
-        }
 
         // Replace aggregate function calls with column references.
         AggregateReplacementProcessor processor = new AggregateReplacementProcessor();
@@ -152,6 +149,11 @@ public class GeneralPlanner implements Planner {
             processor.setErrorMessage("Aggregate functions in ON clauses are not allowed");
             selClause.getFromClause().getOnExpression().traverse(processor);
         }
+
+        if (processor.getGroupAggregates().isEmpty() && groupByExprs.isEmpty()) {
+            return child;
+        }
+
         HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(child, groupByExprs, processor.getGroupAggregates());
         return hashNode;
     }
