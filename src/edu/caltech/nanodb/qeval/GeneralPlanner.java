@@ -138,8 +138,10 @@ public class GeneralPlanner implements Planner {
         }
 
         // Update the having expression
-        Expression e = selClause.getHavingExpr().traverse(processor);
-        selClause.setHavingExpr(e);
+        if (selClause.getHavingExpr() != null) {
+            Expression e = selClause.getHavingExpr().traverse(processor);
+            selClause.setHavingExpr(e);
+        }
 
         if (selClause.getWhereExpr() != null) {
             processor.setErrorMessage("Aggregate functions in WHERE clauses are not allowed");
