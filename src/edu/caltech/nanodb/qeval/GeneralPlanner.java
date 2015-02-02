@@ -84,6 +84,9 @@ public class GeneralPlanner implements Planner {
 
     private PlanNode planFromClause(SelectClause selClause) throws IOException {
         FromClause fromClause = selClause.getFromClause();
+        if (fromClause == null) {
+            return null;
+        }
         PlanNode planNode = null;
         if (fromClause.isBaseTable()) {
             planNode = makeSimpleSelect(fromClause.getTableName(),
