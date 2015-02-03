@@ -1,19 +1,14 @@
 package edu.caltech.nanodb.qeval;
 import java.io.IOException;
-import java.util.*;
-
-
-import edu.caltech.nanodb.commands.SelectValue;
-import edu.caltech.nanodb.expressions.*;
-import edu.caltech.nanodb.functions.AggregateFunction;
-import edu.caltech.nanodb.functions.Function;
-import edu.caltech.nanodb.plans.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
-
 import edu.caltech.nanodb.commands.SelectValue;
 import edu.caltech.nanodb.expressions.BooleanOperator;
 import edu.caltech.nanodb.expressions.ColumnName;
@@ -31,7 +26,6 @@ import edu.caltech.nanodb.plans.SimpleFilterNode;
 import edu.caltech.nanodb.plans.SortNode;
 import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.Schema;
-
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
 
@@ -101,11 +95,11 @@ public class GeneralPlanner implements Planner {
 
     private PlanNode makeGeneralSelect(SelectClause selClause) throws IOException {
         PlanNode res = planFromClause(selClause);
-        //res = planWhereClause(res, selClause);
+        res = planWhereClause(res, selClause);
         res = planGroupingAggregation(res, selClause);
-        //res = planHavingClause(res, selClause);
+        res = planHavingClause(res, selClause);
         res = planProjectClause(res, selClause);
-        //res = planOrderByClause(res, selClause);
+        res = planOrderByClause(res, selClause);
         return res;
     }
 
@@ -118,24 +112,33 @@ public class GeneralPlanner implements Planner {
     }
 
     private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause) {
-
+        /*
         List<Expression> groupByExprs = selClause.getGroupByExprs();
-        if (groupByExprs.isEmpty()) {
-            return child;
-        }
+        Map<String, FunctionCall> groupAggregates = new HashMap<String, FunctionCall>();
 
-        // Replace aggregate function calls with column references.
-        AggregateReplacementProcessor processor = new AggregateReplacementProcessor();
-
-        for (SelectValue sv : selClause.getSelectValues()) {
+        System.out.println(groupByExprs);
+        for (SelectValue sv: selClause.getSelectValues()) {
             if (!sv.isExpression())
                 continue;
-            Expression e = sv.getExpression().traverse(processor);
-            sv.setExpression(e);
+            Expression e = sv.getExpression();
+//            System.out.println(e);
+            if (e instanceof FunctionCall) {
+//                System.out.println(e);
+                Function f = ((FunctionCall)e).getFunction();
+                System.out.println(f);
+                if (f instanceof AggregateFunction) {
+                    AggregateFunction af = (AggregateFunction)f;
+                    groupAggregates.put(e.toString(), (FunctionCall)e);
+                    //System.out.println("yodl");
+                }
+            }
         }
 
-        HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(child, groupByExprs, processor.getGroupAggregates());
-        return hashNode;
+        HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(planNode, groupByExprs, groupAggregates);
+        hashNode.initialize();
+        planNode = (PlanNode) hashNode;
+        return planNode;*/
+        return child;
     }
 
     private PlanNode planHavingClause(PlanNode child, SelectClause selClause) {
@@ -183,7 +186,6 @@ public class GeneralPlanner implements Planner {
         }
         else {
             rightNode = makeGeneralSelect(fromRight.getSelectClause());
-            System.out.println("HERE");
         }
         
         // Check for different join conditions and handle accordingly
@@ -226,7 +228,7 @@ public class GeneralPlanner implements Planner {
                 ret = null;
                 break;
         }
-
+        
         return ret;
     }
     
@@ -234,8 +236,12 @@ public class GeneralPlanner implements Planner {
             PlanNode rightNode, JoinType joinType, Expression onExpr) {
         PlanNode ret;
         if (joinType == JoinType.RIGHT_OUTER) {
-            ret = new NestedLoopsJoinNode(rightNode, leftNode,
+            // Right outer is not implemented in the NestedLoopsJoinNode, so
+            // just do a left outer and switch the arguments. 
+            ret = new NestedLoopsJoinNode(leftNode, rightNode,
                     JoinType.LEFT_OUTER, onExpr);
+            NestedLoopsJoinNode joinNode = (NestedLoopsJoinNode) ret;
+            joinNode.swap();
         }
         else {
             ret = new NestedLoopsJoinNode(leftNode, rightNode,
