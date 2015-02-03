@@ -6,11 +6,11 @@ A:  Logistics
 
 A1.  List your team name and the people who worked on this assignment.
 
-     <team name>
+     BBB
 
-     <name>
-     <name>
-     ...
+     Ryan Batterman
+     Alex Bello
+     Ronnel Boettcher
 
 A2.  Specify the tag name and commit-hash of the Git version you are
      submitting for your assignment.  (You can list the commit hashes
@@ -22,7 +22,13 @@ A2.  Specify the tag name and commit-hash of the Git version you are
 A3.  Specify any late tokens you are applying to this assignment, or
      "none" if no late tokens.
 
+     None
+
 A4.  Briefly describe what parts of the assignment each teammate focused on.
+
+     Ryan focused on grouping/aggregation and architecting the simple query planner.
+     Ronnel focused on integrating joins with the simple query planner and testing.
+     Bello focused on joins and testing.
 
 B:  Simple Planner
 ------------------
@@ -32,19 +38,57 @@ B1.  Without going into the details of how you handle grouping and
      planner's makePlan() method follows to translate a SQL query into
      an execution plan.
 
+     makePlan calls makeGeneralSelect, which in turn:
+     1) Constructs base plan tree from the FROM clause part of the select statement.
+     2) Wraps a plan node for the WHERE clause around this
+     3) Wraps a plan node for grouping/aggregation around that
+     4) Wraps a plan node for the having clause around this result
+     5) Wraps a plan node to project the result around (4)'s result
+     6) Appends on a node for an order-by clause.
+
+     Some queries will not have to perform some of the above steps (e.g. there
+     may be no order-by clause) -- in these cases, no node is added to the
+     list.
+
+     (1) may need to call auxiliary functions to construct plan nodes for the join
+     expressions in the select statement.
+
 B2.  Describe how you generate the execution-plan fragment for the query's
      FromClause.  Make sure to touch on what you do in the three cases your
      planner is expected to handle - tables, subqueries in the FROM clause,
      and joins.
 
+     * If there is no fromClause, then we do nothing
+     * If the from clause refers to a base table, we open a FileScan node for that
+       and return it.
+     * If there is a join expression, then ... #TODO
+     * Otherwise, we have a nested subquery; we construct plan nodes for the subquery.
+
 B3.  Describe how you implemented support for grouping and aggregation.
      Be sure to note any variations from the approach outlined in class,
      if there are any.
+
+     1) Replace any references to aggregate functions in the select 
+      	clause and the HAVING clause with column references. If any doubly-nested
+	aggregate functions are encountered, we raise an error.
+     2) We check if there are any aggregate functions in the WHERE expression /
+     	FROM clause; if so, we signal an error.
+     3) If we encountered no aggregation functions and no group-by expressions,
+     	we do nothing.
+     4) Otherwise, we construct an aggregation node specifying the group-by
+     	expressions and the new mapping between column names and aggregates.
+
+     It's the same as what was suggested in class.
 
 B4.  Does your planner try to implement any simplifications in specific
      circumstances, e.g. when a "trivial project" is used (i.e. "SELECT *
      FROM ...") in your planner?  Briefly enumerate simplifications and
      optimizations here.
+
+     If there is a trivial project, we don't construct a project node.
+     If there is no HAVING expression / order-by clause / FROM clause /
+     grouping/aggregation / WHERE clause -- then we don't construct the
+     associated node.
 
 C:  Nested-Loop Join
 --------------------
