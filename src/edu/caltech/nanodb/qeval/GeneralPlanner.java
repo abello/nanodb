@@ -215,7 +215,7 @@ public class GeneralPlanner implements Planner {
             case JOIN_USING:
                 List<String> usingCols = fromClause.getUsingNames();
                 onExpr = getColumnsEqualityExpression(
-                        fromLeft.getTableName(), fromRight.getTableName(), 
+                        fromLeft.getResultName(), fromRight.getResultName(), 
                         usingCols);
                 ret = getNestedLoopsJoinNode(leftNode, rightNode,
                         fromClause.getJoinType(), onExpr);
