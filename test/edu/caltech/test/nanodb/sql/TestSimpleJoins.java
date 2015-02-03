@@ -93,8 +93,9 @@ public class TestSimpleJoins extends SqlTestCase {
         TupleLiteral[] expected = {
                 new TupleLiteral(10, 1, 1, 100),
                 new TupleLiteral(20, 2, 2, 200),
-                new TupleLiteral(20, 2, 2, 202),
+                new TupleLiteral(20, 2, 2, 222),
                 new TupleLiteral(30, 3, 3, 300),
+                new TupleLiteral(40, 4, 4, 400),
         };
 
         CommandResult result;
@@ -115,6 +116,7 @@ public class TestSimpleJoins extends SqlTestCase {
                 new TupleLiteral(20, 2, 2, 200),
                 new TupleLiteral(22, 2, 2, 200),
                 new TupleLiteral(30, 3, 3, 300),
+                new TupleLiteral(40, 4, 4, 400),
         };
 
         CommandResult result;
