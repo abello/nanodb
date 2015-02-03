@@ -184,11 +184,11 @@ public class DBPage implements Pinnable {
 
     @Override
     public void unpin() {
-        if (pinCount <= 0) {
+/*        if (pinCount <= 0) {
             throw new IllegalStateException(
                 "pinCount is not positive (value is " + pinCount + ")");
         }
-
+*/
         // To facilitate debugging of pinned-page leaks!
         bufferManager.recordPageUnpinned(this);
 

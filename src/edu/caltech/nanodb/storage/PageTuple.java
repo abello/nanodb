@@ -148,6 +148,7 @@ public abstract class PageTuple implements Tuple {
 
     @Override
     public void unpin() {
+/*
         if (pinCount <= 0) {
             throw new IllegalStateException(
                 "pinCount is not positive (value is " + pinCount + ")");
@@ -166,7 +167,7 @@ public abstract class PageTuple implements Tuple {
             pageOffset = -1;
             endOffset = -1;
             valueOffsets = null;
-        }
+        } */
     }
 
 
