@@ -10,6 +10,7 @@ import org.apache.log4j.Logger;
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.AggregateReplacementProcessor;
 import edu.caltech.nanodb.expressions.BooleanOperator;
 import edu.caltech.nanodb.expressions.ColumnName;
 import edu.caltech.nanodb.expressions.ColumnValue;
@@ -17,6 +18,7 @@ import edu.caltech.nanodb.expressions.CompareOperator;
 import edu.caltech.nanodb.expressions.Expression;
 import edu.caltech.nanodb.expressions.OrderByExpression;
 import edu.caltech.nanodb.plans.FileScanNode;
+import edu.caltech.nanodb.plans.HashedGroupAggregateNode;
 import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
 import edu.caltech.nanodb.plans.PlanNode;
 import edu.caltech.nanodb.plans.ProjectNode;
@@ -78,6 +80,9 @@ public class GeneralPlanner implements Planner {
 
     private PlanNode planFromClause(SelectClause selClause) throws IOException {
         FromClause fromClause = selClause.getFromClause();
+        if (fromClause == null) {
+            return null;
+        }
         PlanNode planNode = null;
         if (fromClause.isBaseTable()) {
             planNode = makeSimpleSelect(fromClause.getTableName(),
@@ -112,33 +117,41 @@ public class GeneralPlanner implements Planner {
     }
 
     private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause) {
-        /*
+        
         List<Expression> groupByExprs = selClause.getGroupByExprs();
-        Map<String, FunctionCall> groupAggregates = new HashMap<String, FunctionCall>();
 
-        System.out.println(groupByExprs);
-        for (SelectValue sv: selClause.getSelectValues()) {
+        // Replace aggregate function calls with column references.
+        AggregateReplacementProcessor processor = new AggregateReplacementProcessor();
+        
+        for (SelectValue sv : selClause.getSelectValues()) {
             if (!sv.isExpression())
-                continue;
-            Expression e = sv.getExpression();
-//            System.out.println(e);
-            if (e instanceof FunctionCall) {
-//                System.out.println(e);
-                Function f = ((FunctionCall)e).getFunction();
-                System.out.println(f);
-                if (f instanceof AggregateFunction) {
-                    AggregateFunction af = (AggregateFunction)f;
-                    groupAggregates.put(e.toString(), (FunctionCall)e);
-                    //System.out.println("yodl");
-                }
-            }
+            continue;
+            Expression e = sv.getExpression().traverse(processor);
+            sv.setExpression(e);
         }
 
-        HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(planNode, groupByExprs, groupAggregates);
-        hashNode.initialize();
-        planNode = (PlanNode) hashNode;
-        return planNode;*/
-        return child;
+        // Update the having expression
+        if (selClause.getHavingExpr() != null) {
+            Expression e = selClause.getHavingExpr().traverse(processor);
+            selClause.setHavingExpr(e);
+        }
+
+        if (selClause.getWhereExpr() != null) {
+            processor.setErrorMessage("Aggregate functions in WHERE clauses are not allowed");
+            selClause.getWhereExpr().traverse(processor);
+        }
+        if (selClause.getFromClause() != null && selClause.getFromClause().getClauseType() ==
+                FromClause.ClauseType.JOIN_EXPR && selClause.getFromClause().getOnExpression() != null) {
+            processor.setErrorMessage("Aggregate functions in ON clauses are not allowed");
+            selClause.getFromClause().getOnExpression().traverse(processor);
+        }
+
+        if (processor.getGroupAggregates().isEmpty() && groupByExprs.isEmpty()) {
+            return child;
+        }
+
+        HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(child, groupByExprs, processor.getGroupAggregates());
+        return hashNode;
     }
 
     private PlanNode planHavingClause(PlanNode child, SelectClause selClause) {
