@@ -61,8 +61,20 @@ B2.  Describe how you generate the execution-plan fragment for the query's
      * If there is no fromClause, then we do nothing
      * If the from clause refers to a base table, we open a FileScan node for that
        and return it.
-     * If there is a join expression, then ... #TODO
-     * Otherwise, we have a nested subquery; we construct plan nodes for the subquery.
+     * If there is a join expression, we first create plan nodes for the left 
+       and right from clauses. We rename the nodes by their alias (if 
+       applicable), and then wrap them in a NestedLoopsJoinNode. The 
+       arguments passed to the NestedLoopsJoinNode are dependent on the type
+       of join. In a JOIN_ON_EXPR, we pass the ON expression in the select
+       clause. In a JOIN_USING, we construct an equality expression for the
+       USING columns specified in the select clause. And for a natural join,
+       we create an equality expression for the columns in common with both
+       tables. Also since we have only a LEFT OUTER JOIN implementation, to
+       handle RIGHT OUTER JOIN, we call swap() on the join node after 
+       constuction. Lastly, we project the resulting join node to the schema
+       prepared by the initial from clause (getPreparedSelectValues()).
+     * Otherwise, we have a nested subquery; we construct plan nodes for the 
+       subquery by recursively calling the planner on the subquery.
 
 B3.  Describe how you implemented support for grouping and aggregation.
      Be sure to note any variations from the approach outlined in class,
