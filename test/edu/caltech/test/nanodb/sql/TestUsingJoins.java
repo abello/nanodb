@@ -27,7 +27,7 @@ public class TestUsingJoins extends SqlTestCase {
      * This test performs a simple inner join between two non-empty tables. Not every column
      * should join.
      */
-    public void testInnerSimple() throws Throwable {
+    public void testInnerUsingSimple() throws Throwable {
         TupleLiteral[] expected = {
             new TupleLiteral(10, 1, 1, 100),
             new TupleLiteral(20, 2, 2, 200),
@@ -36,7 +36,7 @@ public class TestUsingJoins extends SqlTestCase {
 
         CommandResult result;
 
-        result = server.doCommand("SELECT * FROM test_joins_1 AS t1 INNER JOIN test_joins_2 AS t2 USING (b)", true);
+        result = server.doCommand("SELECT * FROM test_using_1 AS t1 INNER JOIN test_using_2 AS t2 USING (b)", true);
         assert checkUnorderedResults(expected, result);
     }
 
@@ -44,13 +44,13 @@ public class TestUsingJoins extends SqlTestCase {
      * This test performs an inner join between a empty table (right) and a non-empty table.
      * @throws Throwable
      */
-    public void testInnerEmptyRight() throws Throwable {
+    public void testInnerUsingEmptyRight() throws Throwable {
         TupleLiteral[] expected = {
         };
 
         CommandResult result;
 
-        result = server.doCommand("SELECT * FROM test_joins_1 AS t1 INNER JOIN test_joins_empty AS t2 USING (b)", true);
+        result = server.doCommand("SELECT * FROM test_using_1 AS t1 INNER JOIN test_using_empty AS t2 USING (b)", true);
         assert checkUnorderedResults(expected, result);
     }
 
@@ -58,13 +58,13 @@ public class TestUsingJoins extends SqlTestCase {
      * This test performs an inner join between a empty table (left) and a non-empty table.
      * @throws Throwable
      */
-    public void testInnerEmptyLeft() throws Throwable {
+    public void testInnerUsingEmptyLeft() throws Throwable {
         TupleLiteral[] expected = {
         };
 
         CommandResult result;
 
-        result = server.doCommand("SELECT * FROM test_joins_empty AS t1 INNER JOIN test_joins_1 AS t2 USING (b)", true);
+        result = server.doCommand("SELECT * FROM test_using_empty AS t1 INNER JOIN test_using_1 AS t2 USING (b)", true);
         assert checkUnorderedResults(expected, result);
     }
 
@@ -73,13 +73,13 @@ public class TestUsingJoins extends SqlTestCase {
      * This test performs an inner join between two empty tables;
      * @throws Throwable
      */
-    public void testInnerEmptyBoth() throws Throwable {
+    public void testInnerUsingEmptyBoth() throws Throwable {
         TupleLiteral[] expected = {
         };
 
         CommandResult result;
 
-        result = server.doCommand("SELECT * FROM test_joins_empty AS t1 INNER JOIN test_joins_empty_2 AS t2 USING (b)", true);
+        result = server.doCommand("SELECT * FROM test_using_empty AS t1 INNER JOIN test_using_empty_2 AS t2 USING (b)", true);
         assert checkUnorderedResults(expected, result);
     }
 
@@ -89,7 +89,7 @@ public class TestUsingJoins extends SqlTestCase {
      * the right table would join.
      * @throws Throwable
      */
-    public void testInnerDupRight() throws Throwable {
+    public void testInnerUsingDupRight() throws Throwable {
         TupleLiteral[] expected = {
                 new TupleLiteral(10, 1, 1, 100),
                 new TupleLiteral(20, 2, 2, 200),
@@ -100,7 +100,7 @@ public class TestUsingJoins extends SqlTestCase {
 
         CommandResult result;
 
-        result = server.doCommand("SELECT * FROM test_joins_dup_1 AS t1 INNER JOIN test_joins_dup_2 AS t2 ON USING (b)", true);
+        result = server.doCommand("SELECT * FROM test_using_dup_1 AS t1 INNER JOIN test_using_dup_2 AS t2 ON USING (b)", true);
         assert checkUnorderedResults(expected, result);
     }
 
@@ -110,7 +110,7 @@ public class TestUsingJoins extends SqlTestCase {
      * the left table would join.
      * @throws Throwable
      */
-    public void testInnerDupLeft() throws Throwable {
+    public void testInnerUsingDupLeft() throws Throwable {
         TupleLiteral[] expected = {
                 new TupleLiteral(10, 1, 1, 100),
                 new TupleLiteral(20, 2, 2, 200),
@@ -121,7 +121,7 @@ public class TestUsingJoins extends SqlTestCase {
 
         CommandResult result;
 
-        result = server.doCommand("SELECT * FROM test_joins_dup_3 AS t1 INNER JOIN test_joins_dup_4 AS t2 USING (b)", true);
+        result = server.doCommand("SELECT * FROM test_using_dup_3 AS t1 INNER JOIN test_using_dup_4 AS t2 USING (b)", true);
         assert checkUnorderedResults(expected, result);
     }
 }
