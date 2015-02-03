@@ -574,6 +574,66 @@ setup_testUsingJoins = \
     INSERT INTO test_using_dup_4 VALUES (3, 300); \
     INSERT INTO test_using_dup_4 VALUES (4, 400);
 
+# This setup SQL is used for testing joins
+setup_testNaturalJoins = \
+    CREATE TABLE test_natural_1 ( \
+        a INTEGER, \
+        b INTEGER \
+    ); \
+    INSERT INTO test_natural_1 VALUES (0, 0); \
+    INSERT INTO test_natural_1 VALUES (10, 1); \
+    INSERT INTO test_natural_1 VALUES (20, 2); \
+    INSERT INTO test_natural_1 VALUES (30, 3); \
+    CREATE TABLE test_natural_2 ( \
+        b INTEGER, \
+        c INTEGER \
+    ); \
+    INSERT INTO test_natural_2 VALUES (1, 100); \
+    INSERT INTO test_natural_2 VALUES (2, 200); \
+    INSERT INTO test_natural_2 VALUES (3, 300); \
+    INSERT INTO test_natural_2 VALUES (4, 400); \
+    CREATE TABLE test_natural_empty ( \
+        b INTEGER, \
+        c INTEGER  \
+    ); \
+    CREATE TABLE test_natural_empty_2 ( \
+        b INTEGER, \
+        c INTEGER  \
+    ); \
+    CREATE TABLE test_natural_dup_1 ( \
+        a INTEGER, \
+        b INTEGER \
+    ); \
+    INSERT INTO test_natural_dup_1 VALUES (10, 1); \
+    INSERT INTO test_natural_dup_1 VALUES (20, 2); \
+    INSERT INTO test_natural_dup_1 VALUES (30, 3); \
+    INSERT INTO test_natural_dup_1 VALUES (40, 4); \
+    CREATE TABLE test_natural_dup_2 ( \
+        b INTEGER, \
+        c INTEGER \
+    ); \
+    INSERT INTO test_natural_dup_2 VALUES (1, 100); \
+    INSERT INTO test_natural_dup_2 VALUES (2, 200); \
+    INSERT INTO test_natural_dup_2 VALUES (2, 222); \
+    INSERT INTO test_natural_dup_2 VALUES (3, 300); \
+    INSERT INTO test_natural_dup_2 VALUES (4, 400); \
+    CREATE TABLE test_natural_dup_3 ( \
+        a INTEGER, \
+        b INTEGER \
+    ); \
+    INSERT INTO test_natural_dup_3 VALUES (10, 1); \
+    INSERT INTO test_natural_dup_3 VALUES (20, 2); \
+    INSERT INTO test_natural_dup_3 VALUES (22, 2); \
+    INSERT INTO test_natural_dup_3 VALUES (30, 3); \
+    INSERT INTO test_natural_dup_3 VALUES (40, 4); \
+    CREATE TABLE test_natural_dup_4 ( \
+        b INTEGER, \
+        c INTEGER \
+    ); \
+    INSERT INTO test_natural_dup_4 VALUES (1, 100); \
+    INSERT INTO test_natural_dup_4 VALUES (2, 200); \
+    INSERT INTO test_natural_dup_4 VALUES (3, 300); \
+    INSERT INTO test_natural_dup_4 VALUES (4, 400);
 
 
 
