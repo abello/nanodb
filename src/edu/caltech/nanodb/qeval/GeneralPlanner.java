@@ -55,7 +55,7 @@ public class GeneralPlanner implements Planner {
      *
      * @param selClause an object describing the query to be performed
      *
-     * @return a plan tree for executing the specified query
+     * @return a prepared plan tree for executing the specified query
      *
      * @throws java.io.IOException if an IO error occurs when the planner attempts to
      *         load schema and indexing information.
@@ -63,21 +63,22 @@ public class GeneralPlanner implements Planner {
     @Override
     public PlanNode makePlan(SelectClause selClause,
                              List<SelectClause> enclosingSelects) throws IOException {
-        System.out.println("makePlan called!");
-        // TODO:  Implement!
-
         if (enclosingSelects != null && !enclosingSelects.isEmpty()) {
             throw new UnsupportedOperationException(
                     "Not yet implemented:  enclosing queries!");
         }
 
-        // TODO: get logger.debug working.
-        System.out.println(selClause);
         PlanNode res = makeGeneralSelect(selClause);
         res.prepare();
         return res;
     }
 
+    /**
+     * Constructs a plan node for the from clause of the given select statement.
+     * @param selClause
+     * @return A plan node for the clause, or null if there is no such clause.
+     * @throws IOException
+     */
     private PlanNode planFromClause(SelectClause selClause) throws IOException {
         FromClause fromClause = selClause.getFromClause();
         if (fromClause == null) {
@@ -98,6 +99,12 @@ public class GeneralPlanner implements Planner {
         return planNode;
     }
 
+    /**
+     * Returns the root of a plan tree for executing the given query.
+     * @param selClause The select statement.
+     * @return A plan tree for executing the query.
+     * @throws IOException
+     */
     private PlanNode makeGeneralSelect(SelectClause selClause) throws IOException {
         PlanNode res = planFromClause(selClause);
         res = planWhereClause(res, selClause);
@@ -108,6 +115,14 @@ public class GeneralPlanner implements Planner {
         return res;
     }
 
+    /**
+     * Returns a plan node for the where clause in the select statement.
+     *
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return the resultant node
+     * @throws IOException
+     */
     private PlanNode planWhereClause(PlanNode child, SelectClause selClause) throws IOException {
         if (selClause.getWhereExpr() == null) {
             return child;
@@ -116,6 +131,16 @@ public class GeneralPlanner implements Planner {
         return selNode;
     }
 
+    /**
+     * Returns a plan node for the grouping/aggregation part of the select statement.
+     *
+     * Aggregation function calls are replaced with column references by AggregateReplacementProcessor. These,
+     * in turn, are employed during evaluation.
+     *
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The resultant node.
+     */
     private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause) {
         
         List<Expression> groupByExprs = selClause.getGroupByExprs();
@@ -136,6 +161,7 @@ public class GeneralPlanner implements Planner {
             selClause.setHavingExpr(e);
         }
 
+        // Make sure there are no aggregate functions in the where / from clauses.
         if (selClause.getWhereExpr() != null) {
             processor.setErrorMessage("Aggregate functions in WHERE clauses are not allowed");
             selClause.getWhereExpr().traverse(processor);
@@ -154,6 +180,12 @@ public class GeneralPlanner implements Planner {
         return hashNode;
     }
 
+    /**
+     * Returns a node to evaluate the having portion of the select statement.
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The having node.
+     */
     private PlanNode planHavingClause(PlanNode child, SelectClause selClause) {
         if (selClause.getHavingExpr() == null) {
             return child;
@@ -162,6 +194,12 @@ public class GeneralPlanner implements Planner {
         return selNode;
     }
 
+    /**
+     * Returns a projection node for the given select statement.
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The projection node.
+     */
     private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
         if (selClause.isTrivialProject()) {
             return child;
@@ -171,6 +209,12 @@ public class GeneralPlanner implements Planner {
         return projNode;
     }
 
+    /**
+     * Returns an order-by node corresponding for the given select statement.
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The order-by node.
+     */
     private PlanNode planOrderByClause(PlanNode child, SelectClause selClause) {
         List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
         if (!orderExpressions.isEmpty()) {
@@ -179,6 +223,12 @@ public class GeneralPlanner implements Planner {
         return child;
     }
 
+    /**
+     * Returns a join node for the given from clause.
+     * @param fromClause The clause to translate.
+     * @return A join node for evaluating the join expression.
+     * @throws IOException
+     */
     private PlanNode makeJoinExpression(FromClause fromClause) 
             throws IOException {
         FromClause fromLeft = fromClause.getLeftChild();
@@ -314,7 +364,6 @@ public class GeneralPlanner implements Planner {
      */
     public SelectNode makeSimpleSelect(String tableName, Expression predicate,
                                        List<SelectClause> enclosingSelects) throws IOException {
-        System.out.println("makeSimpleSelect called!");
         if (tableName == null)
             throw new IllegalArgumentException("tableName cannot be null");
 
