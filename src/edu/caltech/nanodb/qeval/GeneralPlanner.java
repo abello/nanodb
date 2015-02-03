@@ -200,6 +200,8 @@ public class GeneralPlanner implements Planner {
         else {
             rightNode = makeGeneralSelect(fromRight.getSelectClause());
         }
+        leftNode = new RenameNode(leftNode, fromLeft.getResultName());
+        rightNode = new RenameNode(rightNode, fromRight.getResultName());
         
         // Check for different join conditions and handle accordingly
         PlanNode ret;
