@@ -100,7 +100,7 @@ public class TestUsingJoins extends SqlTestCase {
 
         CommandResult result;
 
-        result = server.doCommand("SELECT * FROM test_using_dup_1 AS t1 INNER JOIN test_using_dup_2 AS t2 ON USING (b)", true);
+        result = server.doCommand("SELECT * FROM test_using_dup_1 AS t1 INNER JOIN test_using_dup_2 AS t2 USING (b)", true);
         assert checkUnorderedResults(expected, result);
     }
 
