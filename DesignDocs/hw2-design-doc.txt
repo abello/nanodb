@@ -141,6 +141,13 @@ D<i>:  <one-line description>
      we should look at for your implementation>
 
      <brief summary of test-cases that demonstrate/exercise your extra work>
+     We implemented tests for USING and NATURAL JOIN clauses. These tests are
+     in test/nanodb/sql/TestUsingJoins.java and 
+     test/nanodb/sql/TestNaturalJoins.java, respectively. They both cover the 
+     following tests -- a simple join with two non-empty tables. Then tests 
+     where both left and right tables are empty. Then a test where both tables
+     are empty. Then tests where the left and right tables both have multiple 
+     rows that should join. 
 
 E:  Feedback [OPTIONAL]
 -----------------------
