@@ -116,17 +116,90 @@ C1.  The join algorithm stated in class is really only suitable for
      operation can resume at the appropriate place when the next row
      must be returned.
 
+
+     NOTE: There are probably ways to do this much cleaner! Some of what we 
+     considered besides the current approach: 
+        *   using exceptions to communicate events from getTuplesToJoin() to
+            getNextTuple() (but that's probably even dirtier, as it serves as a cross-function goto)
+        *   Writing different getTuplesToJoin() functions for different kinds of joins. This would
+            certainly make each function cleaner, but a lot of code would be repeated, making
+            refactoring and maintainability hard.
+
+    The main idea is the following: The leftChild and rightChild iterators are used to emulate
+    the nested for loop. In the simple inner join case, the rightChild iterator would be exhausted
+    (until we got null), then the leftChild iterator would be called once, then the right one 
+    initialized again and started over. This is done all the way until the leftChild iterator is exhausted,
+    hence completing the n^2 iterations:
+
+    Step 1: Initialize both right and left iterators
+    Step 2: Advance right iterator, return true if we don't get null
+    Step 3: If we get null, move the left iterator, re-initiate the rigth one
+    Step 4: If the right iterator returned null, we're done. Otherwise return true
+
+    For the simple inner joins no extra state must be stored (the state of the iterators is enough).
+    For other kinds of joins, some extra pieces of information must be stored, so that getTuplesToJoin()
+    and getNextTuple() can communicate together.
+
+
+
+
+
 C2.  What tweaks did you need to introduce into the implementation for
      left outer joins?  Keep your answer brief, but please also be specific.
+        
+        Added the following flags to keep track of state:
+            * matchedRow: a flag that is set to true iff the outer loop had a matching row (hence no null padding needed)
+            * padnull: A flag set to true iff getNextTuple() needs to disregard one of the children. When seeing this set to
+            true, getNextTuple() should pad null
 
 C3.  Same question as for C2, but for semijoins.
 
+        Added the following flags to keep track of state:
+            * breakInner: a flag that is set to true iff getNextTuple() wants getTUplesToJoin() to re-initiate the
+            right iterator and move the left one. Used for semijoins so that if a match is found, we can break the inner
+            loop.
+
 C4.  Same question as for C2, but for antijoins.
+
+        Added the following flags to keep track of state:
+            * breakInner: a flag that is set to true iff getNextTuple() wants getTUplesToJoin() to re-initiate the
+            right iterator and move the left one. Used for antijoins so that if a match is found, we can break the inner
+            loop.
+            * unmatchedRow: a flag set to true iff we're done with the inner loop, and the outer row has NO matching
+            rows. This is used so getTuplesToJoin() tells getNextTuple() that the iteration is done, and no matching 
+            rows were found. Used in antijoin to tell whether the current row should be included or not
 
 C5.  Enumerate your nested-loop join test cases, following this form:
 
      * <test-case class name>.<test function>
        <brief one-sentence description of what the test exercises>
+
+
+       For inner joins:
+       TestSimpleJoins.testInnerSimple: This test performs a simple inner join between two non-empty tables
+       TestSimpleJoins.testInnerEmptyRight: This test performs an inner join between a empty table (left) and a non-empty table
+       TestSimpleJoins.testInnerEmptyLeft: This test performs an inner join between a empty table (right) and a non-empty table
+       TestSimpleJoins.testInnerEmptyBoth: This test performs an inner join between two empty tables
+       TestSimpleJoins.testInnerDupRight: This tests performs an inner join between two nonempty tables where multiple rows of the right table would join
+       TestSimpleJoins.testInnerDupLeft: TestSimpleJoins.testInnerDupRight: This tests performs an inner join between two nonempty tables where multiple rows of the left table would join
+
+       For Left Outer Joins:
+       TestSimpleJoins.testLOJSimple: Same as before, but for LOJ
+       TestSimpleJoins.testLOJEmptyRight:Same as before, but for LOJ
+       TestSimpleJoins.testLOJEmptyLeft: Same as before, but for LOJ
+       TestSimpleJoins.testLOJEmptyBoth: Same as before, but for LOJ
+       TestSimpleJoins.testLOJDupRight: Same as before, but for LOJ
+       TestSimpleJoins.testLOJDupLeft: Same as before, but for LOJ
+
+       For Right Outer Joins:
+       TestSimpleJoins.testROJSimple: Same as before, but for ROJ
+       TestSimpleJoins.testROJEmptyRight:Same as before, but for ROJ
+       TestSimpleJoins.testROJEmptyLeft: Same as before, but for ROJ
+       TestSimpleJoins.testROJEmptyBoth: Same as before, but for ROJ
+       TestSimpleJoins.testROJDupRight: Same as before, but for ROJ
+       TestSimpleJoins.testROJDupLeft: Same as before, but for ROJ
+
+       NOTE: Very similar tests were also written for USING and NATURAL, as part of extra credit
 
 D:  Extra Credit [OPTIONAL]
 ---------------------------
@@ -141,6 +214,7 @@ D<i>:  <one-line description>
      we should look at for your implementation>
 
      <brief summary of test-cases that demonstrate/exercise your extra work>
+
      We implemented tests for USING and NATURAL JOIN clauses. These tests are
      in test/nanodb/sql/TestUsingJoins.java and 
      test/nanodb/sql/TestNaturalJoins.java, respectively. They both cover the 
