@@ -201,7 +201,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                     break;
 
                 case LEFT_OUTER:
-                    // TODO: Reset padNull in here instead
                     if (padNull == true) {
                         logger.debug("Padding null");
                         TupleLiteral rightTupleNulls = new TupleLiteral(rightChild.getSchema().getColumnInfos().size());
@@ -308,8 +307,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // move the outer iterator by 1
         if (nextRightTuple == null) {
             logger.debug("nextRightTuple is null");
-            // TODO: != true
-            if (joinType == JoinType.LEFT_OUTER && padNull != true) {
+            if (joinType == JoinType.LEFT_OUTER && padNull == false) {
                 // If we don't have a matched row at this point, we need to add a null-padded row
                 if (matchedRow == false) {
                     padNull = true;
@@ -339,8 +337,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
 
             // At this point we've advanced the outer tuple. We advance the inner one too, to keep looping.
 
-            // TODO: Verify that initialize doesn't set the iterator to the first tuple. Otherwise we're skipping a
-            // tuple.
             rightChild.initialize();
             rightTuple = rightChild.getNextTuple();
 
