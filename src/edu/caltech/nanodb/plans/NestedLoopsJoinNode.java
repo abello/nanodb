@@ -277,7 +277,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             breakInner = false;
             unMatchedRow = false;
 
-            // If the left tuple is null, we're done (for both LOJ and IJ)
+            // If the left tuple is null, we're done
             if (leftTuple == null) {
                 done = true;
                 return false;
@@ -287,7 +287,8 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // If we're here, we know that we're in the middle of an iteration
 
         // Move the next inner loop (unless we're coming from a padNull round, in which case we shouldn't try
-        // to advance the right tuple)
+        // to advance the right tuple; NOTE: It shouldn't matter if we advance it, we should still get null. However
+        // it's probably not a good practice to call getNextTuple() and get null twice in a row)
         Tuple nextRightTuple;
         if (padNull == false) {
             nextRightTuple = rightChild.getNextTuple();
@@ -296,7 +297,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             nextRightTuple = null;
         }
 
-        /** If we're told to break, update rightTuple and return true iff it's non-null */
+        // If we're told to break, update rightTuple and return true iff it's non-null
         if (breakInner  == true) {
             rightTuple = nextRightTuple;
             breakInner = false;
