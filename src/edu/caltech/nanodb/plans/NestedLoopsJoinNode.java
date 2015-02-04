@@ -308,8 +308,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // move the outer iterator by 1
         if (nextRightTuple == null) {
             logger.debug("nextRightTuple is null");
-            // TODO: != true
-            if (joinType == JoinType.LEFT_OUTER && padNull != true) {
+            if (joinType == JoinType.LEFT_OUTER && padNull == false) {
                 // If we don't have a matched row at this point, we need to add a null-padded row
                 if (matchedRow == false) {
                     padNull = true;
