@@ -3,7 +3,6 @@ package edu.caltech.nanodb.storage.heapfile;
 
 import java.io.EOFException;
 import java.io.IOException;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -15,15 +14,14 @@ import edu.caltech.nanodb.qeval.ColumnStatsCollector;
 import edu.caltech.nanodb.qeval.TableStats;
 import edu.caltech.nanodb.relations.TableSchema;
 import edu.caltech.nanodb.relations.Tuple;
-
 import edu.caltech.nanodb.storage.DBFile;
 import edu.caltech.nanodb.storage.DBFileType;
 import edu.caltech.nanodb.storage.DBPage;
 import edu.caltech.nanodb.storage.FilePointer;
-import edu.caltech.nanodb.storage.TupleFile;
 import edu.caltech.nanodb.storage.InvalidFilePointerException;
 import edu.caltech.nanodb.storage.PageTuple;
 import edu.caltech.nanodb.storage.StorageManager;
+import edu.caltech.nanodb.storage.TupleFile;
 
 
 /**
@@ -491,7 +489,7 @@ public class HeapTupleFile implements TupleFile {
                         colStatCollectors.get(i).addValue(ptup.getColumnValue(i));
                     }
                 }
-                dbPage = storageManager.loadDBPage(dbFile, pageNo++);
+                dbPage = storageManager.loadDBPage(dbFile, ++pageNo);
             }
         }
         catch (EOFException e) {
@@ -511,9 +509,7 @@ public class HeapTupleFile implements TupleFile {
                 avgTupleSize, colStats);
         stats = tStats;
         
-        HeapTupleFileManager hm = (HeapTupleFileManager) 
-                storageManager.getTupleFileManager(DBFileType.HEAP_TUPLE_FILE);
-        hm.saveMetadata(this);
+        heapFileManager.saveMetadata(this);
     }
 
     @Override
