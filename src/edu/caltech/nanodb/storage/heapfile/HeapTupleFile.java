@@ -4,16 +4,20 @@ package edu.caltech.nanodb.storage.heapfile;
 import java.io.EOFException;
 import java.io.IOException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import edu.caltech.nanodb.qeval.ColumnStats;
+import edu.caltech.nanodb.qeval.ColumnStatsCollector;
 import edu.caltech.nanodb.qeval.TableStats;
 import edu.caltech.nanodb.relations.TableSchema;
 import edu.caltech.nanodb.relations.Tuple;
 
 import edu.caltech.nanodb.storage.DBFile;
+import edu.caltech.nanodb.storage.DBFileType;
 import edu.caltech.nanodb.storage.DBPage;
 import edu.caltech.nanodb.storage.FilePointer;
 import edu.caltech.nanodb.storage.TupleFile;
@@ -445,8 +449,71 @@ public class HeapTupleFile implements TupleFile {
 
     @Override
     public void analyze() throws IOException {
-        // TODO!
-        throw new UnsupportedOperationException("Not yet implemented!");
+        int numColumns = schema.numColumns();
+        int numTuples = 0;
+        int sumTupSize = 0;
+        int numDataPages = 0;
+        
+        // Initialize the ColumnStatsCollectors
+        List<ColumnStatsCollector> colStatCollectors = 
+                new ArrayList<ColumnStatsCollector>(); 
+        for (int i = 0; i < numColumns; i++) {
+            colStatCollectors.add(new ColumnStatsCollector(
+                    schema.getColumnInfo(i).getType().getBaseType()));
+        }
+        
+        int pageNo = 1;
+        DBPage dbPage = storageManager.loadDBPage(dbFile, 1);
+        try {
+            while (dbPage != null) {
+                numDataPages++;
+                
+                int tupleStart = DataPage.getTupleDataStart(dbPage);
+                int tupleEnd = DataPage.getTupleDataEnd(dbPage);
+                
+                sumTupSize += tupleEnd - tupleStart;
+                
+                int numSlots = DataPage.getNumSlots(dbPage);
+                for (int iSlot = 0; iSlot < numSlots; iSlot++) {
+                    // Get the offset of the tuple in the page.  If it's 0 then
+                    // the slot is empty, and we skip to the next slot.
+                    int offset = DataPage.getSlotValue(dbPage, iSlot);
+                    if (offset == DataPage.EMPTY_SLOT)
+                        continue;
+    
+                    HeapFilePageTuple ptup =  new HeapFilePageTuple(schema, dbPage, iSlot, offset);
+                    
+                    // Update statistics based on each tuple
+                    numTuples++;
+                    sumTupSize += ptup.getSize();
+                    
+                    for (int i = 0; i < numColumns; i++) {
+                        colStatCollectors.get(i).addValue(ptup.getColumnValue(i));
+                    }
+                }
+                dbPage = storageManager.loadDBPage(dbFile, pageNo++);
+            }
+        }
+        catch (EOFException e) {
+            // We ran out of pages.  No tuples in the file!
+            logger.debug("Analyze function reached last page.");
+        }
+        
+        // Generate the ColumnStats for each column statistic collector
+        ArrayList<ColumnStats> colStats = new ArrayList<ColumnStats>();
+        for (int i = 0; i < numColumns; i++) {
+            colStats.add(colStatCollectors.get(i).getColumnStats());
+        }
+        
+        // Store the calculated statistics
+        float avgTupleSize = sumTupSize / ((float) numTuples);
+        TableStats tStats = new TableStats(numDataPages, numTuples, 
+                avgTupleSize, colStats);
+        stats = tStats;
+        
+        HeapTupleFileManager hm = (HeapTupleFileManager) 
+                storageManager.getTupleFileManager(DBFileType.HEAP_TUPLE_FILE);
+        hm.saveMetadata(this);
     }
 
     @Override
