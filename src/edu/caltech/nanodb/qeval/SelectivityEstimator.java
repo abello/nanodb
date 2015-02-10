@@ -4,13 +4,7 @@ package edu.caltech.nanodb.qeval;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import edu.caltech.nanodb.expressions.ArithmeticOperator;
-import edu.caltech.nanodb.expressions.BooleanOperator;
-import edu.caltech.nanodb.expressions.ColumnValue;
-import edu.caltech.nanodb.expressions.CompareOperator;
-import edu.caltech.nanodb.expressions.Expression;
-import edu.caltech.nanodb.expressions.LiteralValue;
-import edu.caltech.nanodb.expressions.TypeConverter;
+import edu.caltech.nanodb.expressions.*;
 
 import edu.caltech.nanodb.relations.ColumnInfo;
 import edu.caltech.nanodb.relations.SQLDataType;
@@ -27,6 +21,7 @@ public class SelectivityEstimator {
 
     /** A logging object for reporting anything interesting that happens. **/
     private static Logger logger = Logger.getLogger(SelectivityEstimator.class);
+
 
 
     /**
@@ -147,17 +142,36 @@ public class SelectivityEstimator {
 
         float selectivity = 1.0f;
 
+        // Construct an arraylist of expressions
+        ArrayList<Expression> expressions = new ArrayList<Expression>();
+        for (int i = 0; i < bool.getNumTerms(); i++) {
+            expressions.add(bool.getTerm(i));
+        }
+
+        // This would be perfect for some functional-programming (map/foldr). Maybe some other time
+
+        // The result will be accumulated here
+        float result = 0.0f;
+
         switch (bool.getType()) {
         case AND_EXPR:
-            // TODO:  Compute selectivity of AND expression.
+            for (Expression e: expressions) {
+                result *= estimateSelectivity(e, exprSchema, stats);
+            }
+            selectivity = result;
             break;
 
         case OR_EXPR:
-            // TODO:  Compute selectivity of OR expression.
+            for (Expression e: expressions) {
+                result *= 1.0f - estimateSelectivity(e, exprSchema, stats);
+            }
+            selectivity = 1.0f - result;
             break;
 
         case NOT_EXPR:
-            // TODO:  Compute selectivity of NOT expression.
+            // Assuming that we only have one expression (otherwise NOT does't
+            // make much sense
+            selectivity = 1.0f - estimateSelectivity(expressions.get(0), exprSchema, stats);
             break;
 
         default:
@@ -262,19 +276,61 @@ public class SelectivityEstimator {
         SQLDataType sqlType = colInfo.getType().getBaseType();
         ColumnStats colStats = stats.get(colIndex);
 
+
         Object value = literalValue.evaluate();
+
+        Object minObj = colStats.getMinValue();
+        Object maxObj = colStats.getMinValue();
+
+        float valueFlt;
+        float maxFlt;
+        float minFlt;
+        try {
+             valueFlt = TypeConverter.getFloatValue(value);
+             maxFlt = TypeConverter.getFloatValue(minObj);
+             minFlt = TypeConverter.getFloatValue(maxObj);
+        }
+        catch (TypeCastException e) {
+            // This could happen if the types weren't able to convert to float. As we aren't handling this case
+            // just log a debug note and set to 0
+             valueFlt = 0.0f;
+             maxFlt = 0.0f;
+             minFlt = 0.0f;
+        }
+
+        int numUniquevalues = colStats.getNumUniqueValues();
 
         switch (compType) {
         case EQUALS:
         case NOT_EQUALS:
             // Compute the equality value.  Then, if inequality, invert the
             // result.
+            float selEquals;
 
-            // TODO:  Compute the selectivity.  Note that the ColumnStats type
-            //        will return special values to indicate "unknown" stats;
-            //        your code should detect when this is the case, and fall
-            //        back on the default selectivity.
+            // Compute the selectivity if we have an equals statement
+            // NOTE: Even if we have no estimate for the number of values, we could probably do a little better than
+            // default, by assuming approximate-integrity of other stats. For simplicity, the default_selectivity is
+            // being returned for now
+            if (numUniquevalues == -1) {
+                break;
+            }
 
+            // If it's out of the known bounds, set the selectivity to 0
+            if (valueFlt < minFlt || valueFlt > maxFlt) {
+                selEquals = 0.0f;
+            }
+            else {
+                selEquals = 1.0f / numUniquevalues;
+            }
+
+            // Using the selEquals, compute the actual selectivity, by checking if it's an equals or a not-equals
+            // statement
+            if (compType == CompareOperator.Type.EQUALS) {
+                selectivity = selEquals;
+            }
+            else {
+                selectivity = 1.0f - selEquals;
+            }
             break;
 
         case GREATER_OR_EQUAL:
@@ -288,9 +344,38 @@ public class SelectivityEstimator {
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
 
-                // TODO:  Compute the selectivity.  The if-condition ensures
-                //        that you will only compute selectivities if the type
-                //        supports it, and if there are valid stats.
+                // NOTE: Not caring about number of unique values
+
+                // The selectivity for the greater than or equal case
+                float selectivityGOE;
+
+                // Handle out of bounds cases
+                if (valueFlt < minFlt) {
+                    selectivityGOE = 1.0f;
+                }
+                else if (valueFlt > maxFlt) {
+                    selectivityGOE = 0.0f;
+                }
+                // if we're in between min and max
+                else {
+                    // EDGE CASE
+                    // If min and max are equal, and if we're "between" these range (i.e. equal), then the selectivity
+                    // should theoretically be 1
+                    if (minFlt != maxFlt) {
+                        selectivityGOE = 1.0f;
+                    }
+                    else {
+                        // selectivityGOE = (maxFlt - valueFlt) / (maxFlt - minFlt);
+                        selectivityGOE = computeRatio(value, maxObj, minObj, maxObj);
+                    }
+                }
+                // Now we can compute the final selectivity value
+                if (compType == CompareOperator.Type.GREATER_OR_EQUAL) {
+                    selectivity = selectivityGOE;
+                }
+                else {
+                    selectivity = 1.0f - selectivityGOE;
+                }
             }
 
             break;
@@ -306,8 +391,41 @@ public class SelectivityEstimator {
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
 
-                // TODO:  Compute the selectivity.  Watch out for cut-and-paste
-                //        bugs...
+                // NOTE: Not caring about number of unique values
+
+                // Selectivity for the less than or equal case
+                float selectivityLOE;
+
+
+                // Handle out of bounds cases
+                if (valueFlt < minFlt) {
+                    selectivityLOE = 0.0f;
+                }
+                else if (valueFlt > maxFlt) {
+                    selectivityLOE = 1.0f;
+                }
+                // if we're in between min and max
+                else {
+                    // EDGE CASE
+                    // If min and max are equal, and if we're "between" these range (i.e. equal), then the selectivity
+                    // should theoretically be 1
+                    if (minFlt != maxFlt) {
+                        selectivityLOE = 1.0f;
+                    }
+                    else {
+                        // selectivityLOE = (valueFlt - minFlt) / (maxFlt - minFlt);
+                        selectivityLOE = computeRatio(minObj, value, minObj, maxObj);
+                    }
+
+                }
+
+                // Now we can compute the final selectivity value
+                if (compType == CompareOperator.Type.LESS_OR_EQUAL) {
+                    selectivity = selectivityLOE;
+                }
+                else {
+                    selectivity = 1.0f - selectivityLOE;
+                }
             }
 
             break;
