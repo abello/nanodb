@@ -473,10 +473,34 @@ public class SelectivityEstimator {
         ColumnStats colOneStats = stats.get(colOneIndex);
         ColumnStats colTwoStats = stats.get(colTwoIndex);
 
-        // TODO:  Compute the selectivity.  Note that the ColumnStats type
-        //        will return special values to indicate "unknown" stats;
-        //        your code should detect when this is the case, and fall
-        //        back on the default selectivity.
+        int colOneNumRows = colOneStats.getNumUniqueValues();
+        int colTwoNumRows = colTwoStats.getNumUniqueValues();
+
+        // If we don't have the number of rows for any column, fallback to default
+        if (colOneNumRows == -1 || colTwoNumRows == -1) {
+            return DEFAULT_SELECTIVITY;
+        }
+
+        switch (compType) {
+            case EQUALS:
+            case NOT_EQUALS:
+                if (Math.max(colOneNumRows, colTwoNumRows) == 0) {
+                    // avoid division by 0
+                    return 0.0f;
+                }
+                float selEquals = 1 / Math.max(colOneNumRows, colTwoNumRows);
+
+                if (compType == CompareOperator.Type.EQUALS) {
+                    selectivity = selEquals;
+                }
+                else {
+                    selectivity = 1 - selEquals;
+                }
+                break;
+        }
+
+        // TODO: Implement estimates for other types of comparison types
+
 
         return selectivity;
     }
