@@ -283,6 +283,12 @@ public class SelectivityEstimator {
         Object minObj = colStats.getMinValue();
         Object maxObj = colStats.getMaxValue();
 
+        // If we don't have this information (probably because we haven't run analyze)
+        // return default selectivity
+        if (minObj == null || maxObj == null) {
+            return selectivity;
+        }
+
         float valueFlt;
         float maxFlt;
         float minFlt;
