@@ -426,6 +426,7 @@ public class SelectivityEstimator {
                     }
                     else {
                         logger.debug("Doing ratio");
+                        logger.debug(String.format("Value: %f, min: %f, max: %f", valueFlt, minFlt, maxFlt));
                         // selectivityLOE = (valueFlt - minFlt) / (maxFlt - minFlt);
                         selectivityLOE = computeRatio(minObj, value, minObj, maxObj);
                     }
@@ -448,6 +449,7 @@ public class SelectivityEstimator {
             assert false : "Unexpected compare-operator type:  " + compType;
         }
 
+        logger.debug(String.format("Calculated selectivity: %f", selectivity));
         return selectivity;
     }
 
