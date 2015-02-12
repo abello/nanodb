@@ -193,6 +193,13 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
 
         while (getTuplesToJoin()) {
             switch (super.joinType) {
+                case CROSS:
+                    if (canJoinTuples()) {
+                        Tuple result = joinTuples(leftTuple, rightTuple);
+                        return result;
+                    }
+                    break;
+
                 case INNER:
                     if (canJoinTuples()) {
                         Tuple result = joinTuples(leftTuple, rightTuple);
