@@ -465,12 +465,7 @@ public class HeapTupleFile implements TupleFile {
         try {
             while (dbPage != null) {
                 numDataPages++;
-                
-                int tupleStart = DataPage.getTupleDataStart(dbPage);
-                int tupleEnd = DataPage.getTupleDataEnd(dbPage);
-                
-                sumTupSize += tupleEnd - tupleStart;
-                
+
                 int numSlots = DataPage.getNumSlots(dbPage);
                 for (int iSlot = 0; iSlot < numSlots; iSlot++) {
                     // Get the offset of the tuple in the page.  If it's 0 then
