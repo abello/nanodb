@@ -117,7 +117,8 @@ public class SimpleFilterNode extends SelectNode {
         //        predicate, but that's too complicated, so we'll leave them
         //        unchanged for now.
         stats = childStats;
-        
+
+
         float selectivity = SelectivityEstimator.estimateSelectivity(predicate, schema, stats);
         float numTuples = leftChild.getCost().numTuples * selectivity;
         float tupleSize = leftChild.getCost().tupleSize;

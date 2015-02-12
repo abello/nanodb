@@ -3,8 +3,10 @@ package edu.caltech.nanodb.plans;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import edu.caltech.nanodb.expressions.TupleLiteral;
+import edu.caltech.nanodb.qeval.PlanCost;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.Expression;
@@ -166,8 +168,37 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // Use the parent class' helper-function to prepare the schema.
         prepareSchemaStats();
 
-        // TODO:  Implement the rest
-        cost = null;
+
+        float tupleSize = leftChild.getCost().tupleSize + rightChild.getCost().tupleSize;
+        Set<String> commonCols = leftSchema.getCommonColumnNames(rightSchema);
+        long denominator = 1;
+        for (String col : commonCols) {
+            int leftIdx = leftSchema.getColumnIndex(col);
+            int rightIdx = rightSchema.getColumnIndex(col);
+            int leftDistinct = leftChild.getStats().get(leftIdx).getNumUniqueValues();
+            int rightDistinct = leftChild.getStats().get(rightIdx).getNumUniqueValues();
+            denominator *= Math.max(leftDistinct, rightDistinct);
+        }
+        float numTuples = rightChild.getCost().numTuples * leftChild.getCost().numTuples / denominator;
+
+        switch (super.joinType) {
+            case INNER:
+                break;
+            case LEFT_OUTER:
+                numTuples += rightChild.getCost().numTuples;
+                break;
+            case RIGHT_OUTER:
+                numTuples += leftChild.getCost().numTuples;
+                break;
+            case FULL_OUTER:
+                numTuples += leftChild.getCost().numTuples + rightChild.getCost().numTuples;
+                break;
+        }
+        float cpuCost = rightChild.getCost().cpuCost * leftChild.getCost().numTuples +
+                leftChild.getCost().cpuCost + numTuples;
+        // We assume that we can store both tables in memory simultaneously.
+        long numBlockIOs = leftChild.getCost().numBlockIOs + rightChild.getCost().numBlockIOs;
+        cost = new PlanCost(numTuples, tupleSize, cpuCost, numBlockIOs);
     }
 
 
@@ -212,12 +243,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                         logger.debug("Padding null");
                         TupleLiteral rightTupleNulls = new TupleLiteral(rightChild.getSchema().getColumnInfos().size());
                         logger.debug("Created new tuple literal with null columns");
-                        //logger.debug("Created new null tupleLiteral");
-                        //rightTupleNulls.appendTuple(rightTuple);
-                        //logger.debug("Appended to tuple literal");
-                        //for (int i = 0; i < rightTupleNulls.getColumnCount(); i++) {
-                        //    rightTupleNulls.setColumnValue(i, null);
-                        //}
 
                         Tuple result = joinTuples(leftTuple, rightTupleNulls);
                         return result;
