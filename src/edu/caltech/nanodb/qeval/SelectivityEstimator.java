@@ -340,6 +340,8 @@ public class SelectivityEstimator {
             // Compute the greater-or-equal value.  Then, if less-than,
             // invert the result.
 
+            logger.debug("GOE-LT");
+
             // Only estimate selectivity for this kind of expression if the
             // column's type supports it.
 
@@ -353,9 +355,11 @@ public class SelectivityEstimator {
 
                 // Handle out of bounds cases
                 if (valueFlt < minFlt) {
+                    logger.debug("Value less than min");
                     selectivityGOE = 1.0f;
                 }
                 else if (valueFlt > maxFlt) {
+                    logger.debug("Value more than max");
                     selectivityGOE = 0.0f;
                 }
                 // if we're in between min and max
@@ -363,10 +367,12 @@ public class SelectivityEstimator {
                     // EDGE CASE
                     // If min and max are equal, and if we're "between" these range (i.e. equal), then the selectivity
                     // should theoretically be 1
-                    if (minFlt != maxFlt) {
+                    if (minFlt == maxFlt) {
+                        logger.debug("min and max are equal");
                         selectivityGOE = 1.0f;
                     }
                     else {
+                        logger.debug("computing the ratio");
                         // selectivityGOE = (maxFlt - valueFlt) / (maxFlt - minFlt);
                         selectivityGOE = computeRatio(value, maxObj, minObj, maxObj);
                     }
