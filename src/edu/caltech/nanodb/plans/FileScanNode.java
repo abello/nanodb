@@ -174,7 +174,11 @@ public class FileScanNode extends SelectNode {
         stats = tableStats.getAllColumnStats();
 
         // TODO:  Compute the cost of the plan node!
-        cost = null;
+        float numTuples = tableStats.numTuples;
+        long numBlockIOs = tableStats.numDataPages;
+        float tupleSize = tableStats.avgTupleSize;
+        float cpuCost = numTuples;
+        cost = new PlanCost(numTuples, tupleSize, cpuCost, numBlockIOs);
 
         // TODO:  We should also update the table statistics based on the
         //        predicate, but that's too complicated, so we'll leave them
