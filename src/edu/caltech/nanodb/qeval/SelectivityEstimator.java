@@ -292,6 +292,7 @@ public class SelectivityEstimator {
              minFlt = TypeConverter.getFloatValue(minObj);
         }
         catch (TypeCastException e) {
+            logger.warn("Wasn't able to typecast!!");
             // This could happen if the types weren't able to convert to float. As we aren't handling this case
             // just log a debug note and set to 0
              valueFlt = 0.0f;
@@ -388,6 +389,7 @@ public class SelectivityEstimator {
 
             // Only estimate selectivity for this kind of expression if the
             // column's type supports it.
+            logger.debug("LOE-GT");
 
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
@@ -400,9 +402,11 @@ public class SelectivityEstimator {
 
                 // Handle out of bounds cases
                 if (valueFlt < minFlt) {
+                    logger.debug("value less than min");
                     selectivityLOE = 0.0f;
                 }
                 else if (valueFlt > maxFlt) {
+                    logger.debug("value more than max");
                     selectivityLOE = 1.0f;
                 }
                 // if we're in between min and max
@@ -410,10 +414,12 @@ public class SelectivityEstimator {
                     // EDGE CASE
                     // If min and max are equal, and if we're "between" these range (i.e. equal), then the selectivity
                     // should theoretically be 1
-                    if (minFlt != maxFlt) {
+                    if (minFlt == maxFlt) {
+                        logger.debug("min and max are equal!");
                         selectivityLOE = 1.0f;
                     }
                     else {
+                        logger.debug("Doing ratio");
                         // selectivityLOE = (valueFlt - minFlt) / (maxFlt - minFlt);
                         selectivityLOE = computeRatio(minObj, value, minObj, maxObj);
                     }
