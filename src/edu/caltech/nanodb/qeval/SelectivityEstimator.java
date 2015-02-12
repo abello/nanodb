@@ -279,16 +279,17 @@ public class SelectivityEstimator {
 
         Object value = literalValue.evaluate();
 
+        // TODO: Check to see if we've run analyze
         Object minObj = colStats.getMinValue();
-        Object maxObj = colStats.getMinValue();
+        Object maxObj = colStats.getMaxValue();
 
         float valueFlt;
         float maxFlt;
         float minFlt;
         try {
              valueFlt = TypeConverter.getFloatValue(value);
-             maxFlt = TypeConverter.getFloatValue(minObj);
-             minFlt = TypeConverter.getFloatValue(maxObj);
+             maxFlt = TypeConverter.getFloatValue(maxObj);
+             minFlt = TypeConverter.getFloatValue(minObj);
         }
         catch (TypeCastException e) {
             // This could happen if the types weren't able to convert to float. As we aren't handling this case
