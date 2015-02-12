@@ -279,7 +279,6 @@ public class SelectivityEstimator {
 
         Object value = literalValue.evaluate();
 
-        // TODO: Check to see if we've run analyze
         Object minObj = colStats.getMinValue();
         Object maxObj = colStats.getMaxValue();
 
@@ -519,9 +518,6 @@ public class SelectivityEstimator {
                 }
                 break;
         }
-
-        // TODO: Implement estimates for other types of comparison types
-
 
         return selectivity;
     }
