@@ -151,7 +151,7 @@ public class SelectivityEstimator {
         // This would be perfect for some functional-programming (map/foldr). Maybe some other time
 
         // The result will be accumulated here
-        float result = 0.0f;
+        float result = 1.0f;
 
         switch (bool.getType()) {
         case AND_EXPR:
@@ -508,7 +508,7 @@ public class SelectivityEstimator {
                     // avoid division by 0
                     return 0.0f;
                 }
-                float selEquals = 1 / Math.max(colOneNumRows, colTwoNumRows);
+                float selEquals = 1.0f / Math.max(colOneNumRows, colTwoNumRows);
 
                 if (compType == CompareOperator.Type.EQUALS) {
                     selectivity = selEquals;

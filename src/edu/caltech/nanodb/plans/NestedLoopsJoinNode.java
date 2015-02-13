@@ -7,6 +7,8 @@ import java.util.Set;
 
 import edu.caltech.nanodb.expressions.TupleLiteral;
 import edu.caltech.nanodb.qeval.PlanCost;
+import edu.caltech.nanodb.qeval.SelectivityEstimator;
+import edu.caltech.nanodb.relations.Schema;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.Expression;
@@ -168,7 +170,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         // Use the parent class' helper-function to prepare the schema.
         prepareSchemaStats();
 
-
         float tupleSize = leftChild.getCost().tupleSize + rightChild.getCost().tupleSize;
         Set<String> commonCols = leftSchema.getCommonColumnNames(rightSchema);
         long denominator = 1;
@@ -179,7 +180,16 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             int rightDistinct = leftChild.getStats().get(rightIdx).getNumUniqueValues();
             denominator *= Math.max(leftDistinct, rightDistinct);
         }
-        float numTuples = rightChild.getCost().numTuples * leftChild.getCost().numTuples / denominator;
+        float numTuples;
+        if (super.joinType == joinType.CROSS) {
+            numTuples = rightChild.getCost().numTuples * leftChild.getCost().numTuples;
+        } else {
+            numTuples = rightChild.getCost().numTuples * leftChild.getCost().numTuples / denominator;
+        }
+        System.out.println(SelectivityEstimator.estimateSelectivity(predicate, schema, stats));
+        numTuples *= SelectivityEstimator.estimateSelectivity(predicate, schema, stats);
+        System.out.println(denominator);
+        System.out.println(predicate);
 
         switch (super.joinType) {
             case INNER:
@@ -193,9 +203,16 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             case FULL_OUTER:
                 numTuples += leftChild.getCost().numTuples + rightChild.getCost().numTuples;
                 break;
+            case SEMIJOIN:
+                numTuples = leftChild.getCost().numTuples;
+                break;
+            case ANTIJOIN:
+                numTuples = rightChild.getCost().numTuples;
+                break;
+
         }
-        float cpuCost = rightChild.getCost().cpuCost * leftChild.getCost().numTuples +
-                leftChild.getCost().cpuCost + numTuples;
+        float cpuCost = leftChild.getCost().cpuCost + rightChild.getCost().cpuCost +
+                rightChild.getCost().numTuples * leftChild.getCost().numTuples;
         // We assume that we can store both tables in memory simultaneously.
         long numBlockIOs = leftChild.getCost().numBlockIOs + rightChild.getCost().numBlockIOs;
         cost = new PlanCost(numTuples, tupleSize, cpuCost, numBlockIOs);
