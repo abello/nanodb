@@ -34,6 +34,26 @@ B:  Statistics Collection
 B1.  Using pseudocode, summarize the implementation of your HeapTupleFile
      analyze() function.
 
+     Initialize column stats collectors for each column in table.
+     dbPage = first database page in DBFile for this HeapTupleFile
+     numberOfPages = 0
+     numberOfSlots = 0
+     numberOfTuples = 0
+     sumOfTupleSizes
+     while dbPage is not null:
+         numberOfPages = numberOfPages + 1
+         numberOfSlots = numberOfSlots + number of slots in dbPage
+         for slot in dbPage:
+             ptup = tuple from slot
+             numberOfTuples = numberOfTuples + 1
+             sumOfTupleSizes = sumOfTupleSizes + ptup's size
+         dbPage = next page
+     Generate column stats for each column statistic collector
+     Calculate average tuple size
+     Initialize TableStats object with variables computed above, and the
+        column stats.
+     Save the stats
+
 C:  Plan Costing Implementation
 -------------------------------
 
