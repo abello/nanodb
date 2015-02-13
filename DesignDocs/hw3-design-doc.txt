@@ -26,6 +26,8 @@ A3.  Specify any late tokens you are applying to this assignment, or
 
 A4.  Briefly describe what parts of the assignment each teammate focused on.
 
+     Ryan focused on plan costing.
+
 B:  Statistics Collection
 -------------------------
 
@@ -38,9 +40,28 @@ C:  Plan Costing Implementation
 C1.  Briefly describe how you estimate the number of tuples and the cost
      of a file-scan plan node.  What factors does your cost include?
 
+     * The number of tuples is estimated using previous counts of the number of tuples.
+     * The number of block IOs is equal to the number of data pages
+     * The tuple size is the observed average tuple size from the last time analyze was called.
+     * The cpu cost is the number of tuples.
+
 C2.  Same question as for C1, but for simple filter nodes.
+     * The number of tuples is estimated as the number of tuples of the child times the selectivity,
+       where the selectivity is estimated as [TODO]
+     * The number of block IOs is the number of block IOs of the child.
+     * The tuple size is the tuple size of the child.
+     * The cpu cost is the cpu cost of the child + the number of tuples of the child.
 
 C3.  Same question as for C1, but for nested-loop joins.
+     * The number of tuples is:
+       - selectivity(predicate) * (n_r + n_l) + delta for:
+       	 * n_r, n_l := number of tuples in the right and left tables, respectively
+	 * delta := n_r for left outer join, n_l for right outer, n_r + n_l for full outer
+       - n_l for semijoin and antijoin
+     * The number of block IOs is estimated as the sum of the number of block IOs of the left
+       right children.
+     * The tuple size is the sum of the tuple sizes of the left and right children.
+     * The cpu cost is the sum of the cpu costs of the left and right children + n_r * n_l.
 
 D:  Costing SQL Queries
 -----------------------
@@ -50,26 +71,38 @@ have analyzed all of the tables in that schema.
 
 D1.  Paste the output of running:  EXPLAIN SELECT * FROM cities;
      Do not include debug lines, just the output of the command itself.
+Explain Plan:
+    FileScan[table:  CITIES] cost=[tuples=254.0, tupSize=47.6, cpuCost=254.0, blockIOs=1]
+
+Estimated 254.000000 tuples with average size 47.574802
+Estimated number of block IOs:  1
+
 
 D2.  What is the estimated number of tuples that will be produced by each
      of these queries:
 
      SELECT * FROM cities WHERE population > 1000000;
 
-     <paste output here>
+     225.582245
 
      SELECT * FROM cities WHERE population > 5000000;
 
-     <paste output here>
+     99.262199
 
      SELECT * FROM cities WHERE population > 8000000;
 
-     <paste output here>
+     4.522162
 
      How many tuples does each query produce?
 
+     9, 1, 1 respectively
+
      Briefly explain the difference between the estimated number of tuples
      and the actual number of tuples for these queries.
+     
+     Population is not uniformly distributed; it follows a power law. This means
+     we have way fewer large city than would be expected on the basis of a
+     uniform distribution.
 
 D3.  Paste the output of running these commands:
 
