@@ -208,7 +208,18 @@ D4.  The assignment gives this example "slow" query:
 
     HOWEVER, it won't give the correct result due to some planner bug from last week :(((.
 
-    Explain result: [[[TODO]]]
+    Explain result:
+        Explain Plan:
+        Project[values:  [STORES.STORE_ID, STORES.PROPERTY_COSTS]] cost=[tuples=2000.0, tupSize=36.8, cpuCost=514254.0, blockIOs=5]
+            Project[values:  [STORES.CITY_ID AS CITY_ID, STORES.STORE_ID, STORES.PROPERTY_COSTS, CITIES.CITY_NAME, CITIES.POPULATION, CITIES.STATE_ID]] cost=[tuples=2000.0, tupSize=36.8, cpuCost=512254.0, blockIOs=5]
+                NestedLoops[pred:  STORES.CITY_ID == CITIES.CITY_ID] cost=[tuples=2000.0, tupSize=36.8, cpuCost=510254.0, blockIOs=5]
+                    Rename[resultTableName=STORES] cost=[tuples=2000.0, tupSize=13.0, cpuCost=2000.0, blockIOs=4]
+                        FileScan[table:  STORES] cost=[tuples=2000.0, tupSize=13.0, cpuCost=2000.0, blockIOs=4]
+                    Rename[resultTableName=CITIES] cost=[tuples=254.0, tupSize=23.8, cpuCost=254.0, blockIOs=1]
+                        FileScan[table:  CITIES] cost=[tuples=254.0, tupSize=23.8, cpuCost=254.0, blockIOs=1]
+
+    Estimated 2000.000000 tuples with average size 36.787399
+    Estimated number of block IOs:  5
 
 
 
