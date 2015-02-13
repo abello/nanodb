@@ -173,7 +173,6 @@ public class FileScanNode extends SelectNode {
         TableStats tableStats = tupleFile.getStats();
         stats = tableStats.getAllColumnStats();
 
-        // TODO:  Compute the cost of the plan node!
         float numTuples = tableStats.numTuples;
         long numBlockIOs = tableStats.numDataPages;
         float tupleSize = tableStats.avgTupleSize;

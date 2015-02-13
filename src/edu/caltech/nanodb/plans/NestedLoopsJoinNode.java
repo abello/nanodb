@@ -190,7 +190,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
                 numTuples = leftChild.getCost().numTuples;
                 break;
             case ANTIJOIN:
-                numTuples = rightChild.getCost().numTuples;
+                numTuples = leftChild.getCost().numTuples;
                 break;
         }
         float cpuCost = leftChild.getCost().cpuCost + rightChild.getCost().cpuCost +
