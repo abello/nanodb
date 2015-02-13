@@ -8,6 +8,7 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
+import edu.caltech.nanodb.commands.FromClause.ClauseType;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.commands.SelectValue;
 import edu.caltech.nanodb.expressions.AggregateReplacementProcessor;
@@ -225,6 +226,30 @@ public class GeneralPlanner implements Planner {
         }
         return child;
     }
+    
+    private PlanNode handleJoinClause(FromClause from) throws IOException {
+        PlanNode node = null;
+        switch (from.getClauseType()) {
+        case BASE_TABLE:
+            node = makeSimpleSelect(from.getTableName(),
+                    null, null);
+            break;
+        case JOIN_EXPR:
+            node = makeJoinExpression(from, null);
+            break;
+        case SELECT_SUBQUERY:
+            node = makeGeneralSelect(from.getSelectClause());
+            break;
+        case TABLE_FUNCTION:
+            break;
+        default:
+            break;
+        }
+        if (from.getClauseType() != ClauseType.JOIN_EXPR) {
+            node = new RenameNode(node, from.getResultName());
+        }
+        return node;
+    }
 
     /**
      * Returns a join node for the given from clause.
@@ -237,27 +262,10 @@ public class GeneralPlanner implements Planner {
         FromClause fromLeft = fromClause.getLeftChild();
         FromClause fromRight = fromClause.getRightChild();
         PlanNode leftNode, rightNode;
-        
+
         // Extract plan nodes from the left and right joins
-        if (fromLeft.isBaseTable()) {
-            leftNode = makeSimpleSelect(fromLeft.getTableName(),
-                    null, null);
-        }
-        else {
-            leftNode = makeGeneralSelect(fromLeft.getSelectClause());
-        }
-        if (fromRight.isBaseTable()) {
-            rightNode = makeSimpleSelect(fromRight.getTableName(),
-                    null, null);
-        }
-        else {
-            rightNode = makeGeneralSelect(fromRight.getSelectClause());
-        }
-        
-        // Rename the left and right tables in the join, in case they were
-        // aliased. 
-        leftNode = new RenameNode(leftNode, fromLeft.getResultName());
-        rightNode = new RenameNode(rightNode, fromRight.getResultName());
+        leftNode = handleJoinClause(fromLeft);
+        rightNode = handleJoinClause(fromRight);
         
         // Check for different join conditions and handle accordingly
         PlanNode ret;
