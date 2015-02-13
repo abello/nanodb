@@ -27,6 +27,8 @@ A3.  Specify any late tokens you are applying to this assignment, or
 A4.  Briefly describe what parts of the assignment each teammate focused on.
 
      Ryan focused on plan costing.
+     Bello focused on selectivity estimations.
+     Ronnel focused on statistics collection.
 
 B:  Statistics Collection
 -------------------------
@@ -67,7 +69,8 @@ C1.  Briefly describe how you estimate the number of tuples and the cost
 
 C2.  Same question as for C1, but for simple filter nodes.
      * The number of tuples is estimated as the number of tuples of the child times the selectivity,
-       where the selectivity is estimated as [TODO]
+       where the selectivity is estimated assuming a uniform distribution of the values in the
+       predicate column (essentially by using the computeRatio helper, as described in class)
      * The number of block IOs is the number of block IOs of the child.
      * The tuple size is the tuple size of the child.
      * The CPU cost is the CPU cost of the child + the number of tuples of the child.
