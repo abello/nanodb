@@ -153,14 +153,37 @@ D4.  The assignment gives this example "slow" query:
            state_name = 'Oregon' AND property_costs > 500000;
 
      How long does this query take to run, in seconds?
+     ~ 17.2s
 
      Include the EXPLAIN output for the above query here.
 
-     <paste output here>
+    Explain Plan:
+        Project[values:  [STORES.STORE_ID, STORES.PROPERTY_COSTS]] cost=[tuples=62.4, tupSize=52.5, cpuCost=6987367.5, blockIOs=6]
+            NestedLoops[pred:  STORES.CITY_ID == CITIES.CITY_ID AND CITIES.STATE_ID == STATES.STATE_ID AND STATES.STATE_NAME == 'Oregon' AND STORES.PROPERTY_COSTS > 500000] cost=[tuples=62.4, tupSize=52.5, cpuCost=6987305.0, blockIOs=6]
+                NestedLoops[no pred] cost=[tuples=127000.0, tupSize=36.8, cpuCost=510254.0, blockIOs=5]
+                    Rename[resultTableName=STORES] cost=[tuples=2000.0, tupSize=13.0, cpuCost=2000.0, blockIOs=4]
+                        FileScan[table:  STORES] cost=[tuples=2000.0, tupSize=13.0, cpuCost=2000.0, blockIOs=4]
+                    Rename[resultTableName=CITIES] cost=[tuples=254.0, tupSize=23.8, cpuCost=254.0, blockIOs=1]
+                        FileScan[table:  CITIES] cost=[tuples=254.0, tupSize=23.8, cpuCost=254.0, blockIOs=1]
+                Rename[resultTableName=STATES] cost=[tuples=51.0, tupSize=15.7, cpuCost=51.0, blockIOs=1]
+                    FileScan[table:  STATES] cost=[tuples=51.0, tupSize=15.7, cpuCost=51.0, blockIOs=1]
+
+    Estimated 62.437443 tuples with average size 52.454067
+    Estimated number of block IOs:  6
+
 
      How would you rewrite this query (e.g. using ON clauses, subqueries
      in the FROM clause, etc.) to be as optimal as possible?  Also include
      the result of EXPLAINing your query.
+     
+     The following should be significantly faster:
+        SELECT store_id, property_costs FROM (stores INNER JOIN cities USING (city_id) WHERE property_costs > 500000) a INNER JOIN states USING (state_id) WHERE state_name = 'Oregon';
+
+    HOWEVER, it won't give the correct result due to some planner bug from last week :(((.
+
+    Explain result: [[[TODO]]]
+
+
 
 E:  Extra Credit [OPTIONAL]
 ---------------------------
