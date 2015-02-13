@@ -109,7 +109,6 @@ public class GeneralPlanner implements Planner {
      * @throws IOException
      */
     private PlanNode makeGeneralSelect(SelectClause selClause) throws IOException {
-        System.out.println(selClause);
         PlanNode res = planFromClause(selClause);
         //res = planWhereClause(res, selClause);
         res = planGroupingAggregation(res, selClause);
