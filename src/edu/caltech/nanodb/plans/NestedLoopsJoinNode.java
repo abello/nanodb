@@ -171,25 +171,8 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         prepareSchemaStats();
 
         float tupleSize = leftChild.getCost().tupleSize + rightChild.getCost().tupleSize;
-        Set<String> commonCols = leftSchema.getCommonColumnNames(rightSchema);
-        long denominator = 1;
-        for (String col : commonCols) {
-            int leftIdx = leftSchema.getColumnIndex(col);
-            int rightIdx = rightSchema.getColumnIndex(col);
-            int leftDistinct = leftChild.getStats().get(leftIdx).getNumUniqueValues();
-            int rightDistinct = leftChild.getStats().get(rightIdx).getNumUniqueValues();
-            denominator *= Math.max(leftDistinct, rightDistinct);
-        }
-        float numTuples;
-        if (super.joinType == joinType.CROSS) {
-            numTuples = rightChild.getCost().numTuples * leftChild.getCost().numTuples;
-        } else {
-            numTuples = rightChild.getCost().numTuples * leftChild.getCost().numTuples / denominator;
-        }
-        System.out.println(SelectivityEstimator.estimateSelectivity(predicate, schema, stats));
+        float numTuples = rightChild.getCost().numTuples * leftChild.getCost().numTuples;
         numTuples *= SelectivityEstimator.estimateSelectivity(predicate, schema, stats);
-        System.out.println(denominator);
-        System.out.println(predicate);
 
         switch (super.joinType) {
             case INNER:
@@ -209,7 +192,6 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
             case ANTIJOIN:
                 numTuples = rightChild.getCost().numTuples;
                 break;
-
         }
         float cpuCost = leftChild.getCost().cpuCost + rightChild.getCost().cpuCost +
                 rightChild.getCost().numTuples * leftChild.getCost().numTuples;

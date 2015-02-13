@@ -122,7 +122,7 @@ public class SimpleFilterNode extends SelectNode {
         float selectivity = SelectivityEstimator.estimateSelectivity(predicate, schema, stats);
         float numTuples = leftChild.getCost().numTuples * selectivity;
         float tupleSize = leftChild.getCost().tupleSize;
-        float cpuCost = leftChild.getCost().cpuCost + numTuples;
+        float cpuCost = leftChild.getCost().cpuCost + leftChild.getCost().numTuples;
         long numBlockIOs = leftChild.getCost().numBlockIOs;
         cost = new PlanCost(numTuples, tupleSize, cpuCost, numBlockIOs);
     }
