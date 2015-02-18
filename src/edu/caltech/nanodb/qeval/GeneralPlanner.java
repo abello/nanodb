@@ -64,6 +64,7 @@ public class GeneralPlanner implements Planner {
     @Override
     public PlanNode makePlan(SelectClause selClause,
                              List<SelectClause> enclosingSelects) throws IOException {
+        System.out.println(selClause);
         if (enclosingSelects != null && !enclosingSelects.isEmpty()) {
             throw new UnsupportedOperationException(
                     "Not yet implemented:  enclosing queries!");
@@ -93,7 +94,7 @@ public class GeneralPlanner implements Planner {
             planNode = planWhereClause(planNode, selClause);
         }
         else if (fromClause.isJoinExpr()){
-            planNode = makeJoinExpression(fromClause, selClause.getWhereExpr());
+            planNode = makeJoinExpression(fromClause);
         }
         else {
             planNode = makeGeneralSelect(fromClause.getSelectClause());
@@ -110,7 +111,7 @@ public class GeneralPlanner implements Planner {
      */
     private PlanNode makeGeneralSelect(SelectClause selClause) throws IOException {
         PlanNode res = planFromClause(selClause);
-        //res = planWhereClause(res, selClause);
+        res = planWhereClause(res, selClause);
         res = planGroupingAggregation(res, selClause);
         res = planHavingClause(res, selClause);
         res = planProjectClause(res, selClause);
@@ -234,7 +235,7 @@ public class GeneralPlanner implements Planner {
                     null, null);
             break;
         case JOIN_EXPR:
-            node = makeJoinExpression(from, null);
+            node = makeJoinExpression(from);
             break;
         case SELECT_SUBQUERY:
             node = makeGeneralSelect(from.getSelectClause());
@@ -256,7 +257,7 @@ public class GeneralPlanner implements Planner {
      * @return A join node for evaluating the join expression.
      * @throws IOException
      */
-    private PlanNode makeJoinExpression(FromClause fromClause, Expression whereClause)  
+    private PlanNode makeJoinExpression(FromClause fromClause)  
             throws IOException {
         FromClause fromLeft = fromClause.getLeftChild();
         FromClause fromRight = fromClause.getRightChild();
@@ -270,53 +271,54 @@ public class GeneralPlanner implements Planner {
         PlanNode ret;
         Expression onExpr;
         
+        /*
         if (fromClause.getConditionType() == null) {
             ret = getNestedLoopsJoinNode(leftNode, rightNode, fromClause.getJoinType(), whereClause);
         }
-        else {
-            switch (fromClause.getConditionType()) {
-                case JOIN_ON_EXPR:
-                    // The simplest case. Create NestedLoopsJoinNode with the join
-                    // parameters.
-                    ret = getNestedLoopsJoinNode(leftNode, rightNode,
-                            fromClause.getJoinType(), 
-                            fromClause.getOnExpression());
-                    break;
-                case JOIN_USING:
-                    List<String> usingCols = fromClause.getUsingNames();
-                    // Create the Join onExpression to pass into 
-                    // NestedLoopsJoinNode.
-                    onExpr = getColumnsEqualityExpression(
-                            fromLeft.getResultName(), fromRight.getResultName(), 
-                            usingCols);
-                    ret = getNestedLoopsJoinNode(leftNode, rightNode,
-                            fromClause.getJoinType(), onExpr);
-                    // Project the table to the correct schema
-                    ret = (PlanNode) new ProjectNode(ret, 
-                            fromClause.getPreparedSelectValues());
-                    break;
-                case NATURAL_JOIN:
-                    Schema leftSchema, rightSchema;
-                    leftSchema = fromLeft.getPreparedSchema();
-                    rightSchema = fromRight.getPreparedSchema();
-                    // Get the common columns between the left and right tables, 
-                    // then construct the Join onExpression by creating an 
-                    // expression equating these columns.
-                    Set<String> commonCols = leftSchema.getCommonColumnNames(rightSchema);
-                    // Get the on expression on which the tables should be joined
-                    onExpr = getColumnsEqualityExpression(
-                            fromLeft.getTableName(), fromRight.getTableName(), 
-                            commonCols);
-                    ret = new NestedLoopsJoinNode(leftNode, rightNode,
-                            fromClause.getJoinType(), onExpr);
-                    // Project the table to the correct schema
-                    ret = (PlanNode) new ProjectNode(ret, 
-                            fromClause.getPreparedSelectValues());
-                    break;
-                default:
-                    ret = null;
-                    break;
-            }
+        */
+        
+        switch (fromClause.getConditionType()) {
+            case JOIN_ON_EXPR:
+                // The simplest case. Create NestedLoopsJoinNode with the join
+                // parameters.
+                ret = getNestedLoopsJoinNode(leftNode, rightNode,
+                        fromClause.getJoinType(), 
+                        fromClause.getOnExpression());
+                break;
+            case JOIN_USING:
+                List<String> usingCols = fromClause.getUsingNames();
+                // Create the Join onExpression to pass into 
+                // NestedLoopsJoinNode.
+                onExpr = getColumnsEqualityExpression(
+                        fromLeft.getResultName(), fromRight.getResultName(), 
+                        usingCols);
+                ret = getNestedLoopsJoinNode(leftNode, rightNode,
+                        fromClause.getJoinType(), onExpr);
+                // Project the table to the correct schema
+                ret = (PlanNode) new ProjectNode(ret, 
+                        fromClause.getPreparedSelectValues());
+                break;
+            case NATURAL_JOIN:
+                Schema leftSchema, rightSchema;
+                leftSchema = fromLeft.getPreparedSchema();
+                rightSchema = fromRight.getPreparedSchema();
+                // Get the common columns between the left and right tables, 
+                // then construct the Join onExpression by creating an 
+                // expression equating these columns.
+                Set<String> commonCols = leftSchema.getCommonColumnNames(rightSchema);
+                // Get the on expression on which the tables should be joined
+                onExpr = getColumnsEqualityExpression(
+                        fromLeft.getResultName(), fromRight.getResultName(), 
+                        commonCols);
+                ret = new NestedLoopsJoinNode(leftNode, rightNode,
+                        fromClause.getJoinType(), onExpr);
+                // Project the table to the correct schema
+                ret = (PlanNode) new ProjectNode(ret, 
+                        fromClause.getPreparedSelectValues());
+                break;
+            default:
+                ret = null;
+                break;
         }
         return ret;
     }
