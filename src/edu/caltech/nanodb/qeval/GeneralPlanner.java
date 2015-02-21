@@ -245,10 +245,15 @@ public class GeneralPlanner implements Planner {
         default:
             break;
         }
-        if (from.getClauseType() != ClauseType.JOIN_EXPR) {
-            node = new RenameNode(node, from.getResultName());
-        }
         return node;
+    }
+    
+    private String getFromResultName(FromClause from) {
+        String ret = "#";
+        if (from.getClauseType() != ClauseType.JOIN_EXPR) {
+            ret = from.getResultName();
+        }
+        return ret;
     }
 
     /**
@@ -267,15 +272,19 @@ public class GeneralPlanner implements Planner {
         leftNode = handleJoinClause(fromLeft);
         rightNode = handleJoinClause(fromRight);
         
+        String resultLeft = getFromResultName(fromLeft);
+        String resultRight = getFromResultName(fromRight);
+        
+        leftNode = new RenameNode(leftNode, resultLeft);
+        rightNode = new RenameNode(rightNode, resultRight);
+        
         // Check for different join conditions and handle accordingly
         PlanNode ret;
         Expression onExpr;
         
-        /*
         if (fromClause.getConditionType() == null) {
-            ret = getNestedLoopsJoinNode(leftNode, rightNode, fromClause.getJoinType(), whereClause);
+            return getNestedLoopsJoinNode(leftNode, rightNode, fromClause.getJoinType(), null);
         }
-        */
         
         switch (fromClause.getConditionType()) {
             case JOIN_ON_EXPR:
@@ -289,9 +298,11 @@ public class GeneralPlanner implements Planner {
                 List<String> usingCols = fromClause.getUsingNames();
                 // Create the Join onExpression to pass into 
                 // NestedLoopsJoinNode.
-                onExpr = getColumnsEqualityExpression(
+                /*onExpr = getColumnsEqualityExpression(
                         fromLeft.getResultName(), fromRight.getResultName(), 
-                        usingCols);
+                        usingCols);*/
+                onExpr = getColumnsEqualityExpression(
+                        resultLeft, resultRight, usingCols);
                 ret = getNestedLoopsJoinNode(leftNode, rightNode,
                         fromClause.getJoinType(), onExpr);
                 // Project the table to the correct schema
