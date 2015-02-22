@@ -245,16 +245,19 @@ public class GeneralPlanner implements Planner {
         default:
             break;
         }
+        if (from.getClauseType() != ClauseType.JOIN_EXPR) {
+            node = new RenameNode(node, from.getResultName());
+        }
         return node;
     }
     
-    private String getFromResultName(FromClause from) {
-        String ret = "#";
+    /*private String getFromResultName(FromClause from) {
+        String ret = null;
         if (from.getClauseType() != ClauseType.JOIN_EXPR) {
             ret = from.getResultName();
         }
         return ret;
-    }
+    } */
 
     /**
      * Returns a join node for the given from clause.
@@ -272,11 +275,8 @@ public class GeneralPlanner implements Planner {
         leftNode = handleJoinClause(fromLeft);
         rightNode = handleJoinClause(fromRight);
         
-        String resultLeft = getFromResultName(fromLeft);
-        String resultRight = getFromResultName(fromRight);
-        
-        //leftNode = new RenameNode(leftNode, resultLeft);
-        //rightNode = new RenameNode(rightNode, resultRight);
+        //String resultLeft = getFromResultName(fromLeft);
+        //String resultRight = getFromResultName(fromRight);
         
         // Check for different join conditions and handle accordingly
         PlanNode ret;
@@ -302,7 +302,8 @@ public class GeneralPlanner implements Planner {
                         fromLeft.getResultName(), fromRight.getResultName(), 
                         usingCols);*/
                 onExpr = getColumnsEqualityExpression(
-                        resultLeft, resultRight, usingCols);
+                        fromLeft.getResultName(), fromRight.getResultName(), 
+                        usingCols);
                 ret = getNestedLoopsJoinNode(leftNode, rightNode,
                         fromClause.getJoinType(), onExpr);
                 // Project the table to the correct schema
