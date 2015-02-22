@@ -25,7 +25,8 @@ public class PlannerFactory {
      * overridden in the configuration.
      */
     public static final String DEFAULT_PLANNER =
-        "edu.caltech.nanodb.qeval.GeneralPlanner";
+        //"edu.caltech.nanodb.qeval.GeneralPlanner";
+        "edu.caltech.nanodb.qeval.CostBasedJoinPlanner";
 
 
     public static class PlannerFactoryPropertyHandler implements PropertyHandler {
