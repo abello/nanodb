@@ -15,6 +15,9 @@ import org.apache.log4j.Logger;
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.expressions.BooleanOperator;
+import edu.caltech.nanodb.expressions.ColumnName;
+import edu.caltech.nanodb.expressions.ColumnValue;
+import edu.caltech.nanodb.expressions.CompareOperator;
 import edu.caltech.nanodb.expressions.Expression;
 import edu.caltech.nanodb.plans.FileScanNode;
 import edu.caltech.nanodb.plans.PlanNode;
@@ -242,8 +245,50 @@ public class CostBasedJoinPlanner implements Planner {
      */
     private void collectDetails(FromClause fromClause,
         HashSet<Expression> conjuncts, ArrayList<FromClause> leafFromClauses) {
-        // TODO:  IMPLEMENT
+        // TODO: LET BATTERMAN DEAL WITH GROUPING AND AGGREGATION STUFF
+        if (fromClause.isBaseTable()) {
+            leafFromClauses.add(fromClause);
+            return;
+        }
+        else if (fromClause.isOuterJoin()) {
+            leafFromClauses.add(fromClause);
+            // TODO: Add conjuncts if any.
+            return;
+        }
+        else if (fromClause.isDerivedTable()) {
+            leafFromClauses.add(fromClause);
+            SelectClause selClause = fromClause.getSelectClause();
+            conjuncts.add(selClause.getWhereExpr());
+            conjuncts.add(selClause.getHavingExpr());
+            collectDetails(selClause.getFromClause(), conjuncts, leafFromClauses);
+            return;
+        }
+        else if (fromClause.isJoinExpr()) {
+            FromClause fromLeft, fromRight;
+            fromLeft = fromClause.getLeftChild();
+            fromRight = fromClause.getRightChild();
+            collectDetails(fromLeft, conjuncts, leafFromClauses);
+            collectDetails(fromRight, conjuncts, leafFromClauses);
+        }
+        else {
+            throw new RuntimeException("Bad from clause.");
+        }
     }
+    
+    // Construct an expression that equates columns in COL that appear in both
+    // LEFTTABLE and RIGHTTABLE.
+    private Expression getColumnsEqualityExpression(String leftTable, String rightTable,
+            Collection<String> cols) {
+        Collection<Expression> compareOperators = new HashSet<Expression>();
+        for (String col : cols) {
+            ColumnName colNameLeft = new ColumnName(leftTable, col);
+            ColumnName colNameRight = new ColumnName(rightTable, col);
+            ColumnValue colValLeft = new ColumnValue(colNameLeft);
+            ColumnValue colValRight = new ColumnValue(colNameRight);
+            compareOperators.add(new CompareOperator(CompareOperator.Type.EQUALS, colValLeft, colValRight));
+        }
+        return new BooleanOperator(BooleanOperator.Type.AND_EXPR, compareOperators); 
+    }   
 
 
     /**
