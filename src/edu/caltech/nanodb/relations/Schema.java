@@ -365,6 +365,7 @@ public class Schema implements Serializable, Iterable<ColumnInfo> {
                 duplicateNames.add(entry.getKey());
             }
         }
+        System.out.println("*" + duplicateNames + "*");
 
         if (duplicateNames != null) {
             throw new SchemaNameException("Overriding table-name to \"" +

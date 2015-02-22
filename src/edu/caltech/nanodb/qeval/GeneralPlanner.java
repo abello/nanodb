@@ -275,8 +275,8 @@ public class GeneralPlanner implements Planner {
         String resultLeft = getFromResultName(fromLeft);
         String resultRight = getFromResultName(fromRight);
         
-        leftNode = new RenameNode(leftNode, resultLeft);
-        rightNode = new RenameNode(rightNode, resultRight);
+        //leftNode = new RenameNode(leftNode, resultLeft);
+        //rightNode = new RenameNode(rightNode, resultRight);
         
         // Check for different join conditions and handle accordingly
         PlanNode ret;
