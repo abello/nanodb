@@ -13,15 +13,19 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
+import edu.caltech.nanodb.commands.FromClause.ClauseType;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.expressions.BooleanOperator;
-import edu.caltech.nanodb.expressions.ColumnName;
-import edu.caltech.nanodb.expressions.ColumnValue;
-import edu.caltech.nanodb.expressions.CompareOperator;
 import edu.caltech.nanodb.expressions.Expression;
+import edu.caltech.nanodb.expressions.PredicateUtils;
 import edu.caltech.nanodb.plans.FileScanNode;
+import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
 import edu.caltech.nanodb.plans.PlanNode;
+import edu.caltech.nanodb.plans.PlanUtils;
+import edu.caltech.nanodb.plans.RenameNode;
 import edu.caltech.nanodb.plans.SelectNode;
+import edu.caltech.nanodb.relations.JoinType;
+import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.StorageManager;
 
@@ -144,6 +148,8 @@ public class CostBasedJoinPlanner implements Planner {
             throw new UnsupportedOperationException(
                 "NanoDB doesn't yet support SQL queries without a FROM clause!");
         }
+        else
+            fromClause.prepare(storageManager.getTableManager());
 
         // TODO:  Implement!
         //
@@ -245,28 +251,22 @@ public class CostBasedJoinPlanner implements Planner {
      */
     private void collectDetails(FromClause fromClause,
         HashSet<Expression> conjuncts, ArrayList<FromClause> leafFromClauses) {
-        // TODO: LET BATTERMAN DEAL WITH GROUPING AND AGGREGATION STUFF
-        if (fromClause.isBaseTable()) {
+        if (fromClause.isBaseTable() || fromClause.isOuterJoin() ||
+                fromClause.isDerivedTable()) {
             leafFromClauses.add(fromClause);
-            return;
-        }
-        else if (fromClause.isOuterJoin()) {
-            leafFromClauses.add(fromClause);
-            // TODO: Add conjuncts if any.
-            return;
-        }
-        else if (fromClause.isDerivedTable()) {
-            leafFromClauses.add(fromClause);
-            SelectClause selClause = fromClause.getSelectClause();
-            conjuncts.add(selClause.getWhereExpr());
-            conjuncts.add(selClause.getHavingExpr());
-            collectDetails(selClause.getFromClause(), conjuncts, leafFromClauses);
-            return;
         }
         else if (fromClause.isJoinExpr()) {
             FromClause fromLeft, fromRight;
             fromLeft = fromClause.getLeftChild();
             fromRight = fromClause.getRightChild();
+            
+            HashSet<Expression> newConjuncts = new HashSet<Expression>();
+            
+            if (fromClause.getConditionType() != null) {
+                Expression joinExpr = fromClause.getPreparedJoinExpr();
+                PredicateUtils.collectConjuncts(joinExpr, newConjuncts);
+            }    
+            conjuncts.addAll(newConjuncts);
             collectDetails(fromLeft, conjuncts, leafFromClauses);
             collectDetails(fromRight, conjuncts, leafFromClauses);
         }
@@ -274,22 +274,6 @@ public class CostBasedJoinPlanner implements Planner {
             throw new RuntimeException("Bad from clause.");
         }
     }
-    
-    // Construct an expression that equates columns in COL that appear in both
-    // LEFTTABLE and RIGHTTABLE.
-    private Expression getColumnsEqualityExpression(String leftTable, String rightTable,
-            Collection<String> cols) {
-        Collection<Expression> compareOperators = new HashSet<Expression>();
-        for (String col : cols) {
-            ColumnName colNameLeft = new ColumnName(leftTable, col);
-            ColumnName colNameRight = new ColumnName(rightTable, col);
-            ColumnValue colValLeft = new ColumnValue(colNameLeft);
-            ColumnValue colValRight = new ColumnValue(colNameRight);
-            compareOperators.add(new CompareOperator(CompareOperator.Type.EQUALS, colValLeft, colValRight));
-        }
-        return new BooleanOperator(BooleanOperator.Type.AND_EXPR, compareOperators); 
-    }   
-
 
     /**
      * This helper method performs the first step of the dynamic programming
@@ -360,18 +344,75 @@ public class CostBasedJoinPlanner implements Planner {
     private PlanNode makeLeafPlan(FromClause fromClause,
         Collection<Expression> conjuncts, HashSet<Expression> leafConjuncts)
         throws IOException {
-
-        // TODO:  IMPLEMENT.
-        //        If you apply any conjuncts then make sure to add them to the
-        //        leafConjuncts collection.
-        //
-        //        Don't forget that all from-clauses can specify an alias.
-        //
-        //        Concentrate on properly handling cases other than outer
-        //        joins first, then focus on outer joins once you have the
-        //        typical cases supported.
-
-        return null;
+        
+        PlanNode node = null;
+        // The set of expressions applicable to fromClause
+        HashSet<Expression> dstExprs = new HashSet<Expression>();
+        
+        switch (fromClause.getClauseType()) {
+        case BASE_TABLE:
+            node = makeSimpleSelect(fromClause.getTableName(),
+                    null, null);
+            node = new RenameNode(node, fromClause.getResultName());
+            break;
+        case SELECT_SUBQUERY:
+            // TODO: second argument here -- should it be null?
+            node = makePlan(fromClause.getSelectClause(), null);
+            node = new RenameNode(node, fromClause.getResultName());
+            break;
+        case JOIN_EXPR:
+            FromClause fromLeft = fromClause.getLeftChild();
+            FromClause fromRight = fromClause.getRightChild();
+            HashSet<Expression> extraConjuncts = new HashSet<Expression>();
+            Schema schema = null;
+            
+            if (fromClause.hasOuterJoinOnLeft()) {
+                schema = fromLeft.getPreparedSchema();
+            }
+            else if (fromClause.hasOuterJoinOnRight()) {
+                schema = fromRight.getPreparedSchema();
+            }
+            
+            // Only pass in conjuncts that correspond to the child from-clause
+            // that is outer joined (i.e. left or right), per the equivalence
+            // rule sigma_theta1(E1 LOJ E2) = sigma_theta1(E1) LOJ E2, where 
+            // theta1 refers only to attributes in E1. 
+            PredicateUtils.findExprsUsingSchemas(conjuncts, false, extraConjuncts, schema);
+            JoinComponent left = makeJoinPlan(fromLeft, extraConjuncts);
+            JoinComponent right = makeJoinPlan(fromRight, extraConjuncts);
+            leafConjuncts.addAll(left.conjunctsUsed);
+            leafConjuncts.addAll(right.conjunctsUsed);
+            PlanNode leftNode = left.joinPlan;
+            PlanNode rightNode = right.joinPlan;
+            
+            // Combine the two JoinComponent objects.
+            node = new NestedLoopsJoinNode(leftNode, rightNode,
+                    JoinType.LEFT_OUTER, null);
+            if (fromClause.hasOuterJoinOnRight()) {
+                // Right outer is not implemented in the NestedLoopsJoinNode, so
+                // just do a left outer and call swap() to swap the left and right
+                // children.
+                NestedLoopsJoinNode joinNode = (NestedLoopsJoinNode) node;
+                joinNode.swap();
+            }
+            break;
+        default:
+            break;
+        }
+        
+        // Prepare the node to compute its schema.
+        node.prepare();
+        Schema schema = node.getSchema();
+        PredicateUtils.findExprsUsingSchemas(conjuncts, false, dstExprs, schema);
+        
+        Expression expr = PredicateUtils.makePredicate(dstExprs);
+        if (expr != null) {
+            PlanUtils.addPredicateToPlan(node, expr);
+            leafConjuncts.addAll(dstExprs);
+            node.prepare();
+        }
+        
+        return node;
     }
 
 
