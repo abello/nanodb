@@ -170,7 +170,7 @@ public class CostBasedJoinPlanner implements Planner {
         // 5)  Handle other situations such as ORDER BY, or LIMIT/OFFSET if
         //     you have implemented this plan-node.
 
-        return null;
+        return makeJoinPlan(selClause.getFromClause(), null).joinPlan;
     }
 
 
@@ -251,8 +251,7 @@ public class CostBasedJoinPlanner implements Planner {
      */
     private void collectDetails(FromClause fromClause,
         HashSet<Expression> conjuncts, ArrayList<FromClause> leafFromClauses) {
-        if (fromClause.isBaseTable() || fromClause.isOuterJoin() ||
-                fromClause.isDerivedTable()) {
+        if (fromClause.isBaseTable() || fromClause.isDerivedTable() || fromClause.isOuterJoin()) {
             leafFromClauses.add(fromClause);
         }
         else if (fromClause.isJoinExpr()) {
