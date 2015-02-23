@@ -10,21 +10,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.*;
+import edu.caltech.nanodb.plans.*;
 import org.antlr.stringtemplate.language.Expr;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.FromClause.ClauseType;
 import edu.caltech.nanodb.commands.SelectClause;
-import edu.caltech.nanodb.expressions.BooleanOperator;
-import edu.caltech.nanodb.expressions.Expression;
-import edu.caltech.nanodb.expressions.PredicateUtils;
-import edu.caltech.nanodb.plans.FileScanNode;
-import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
-import edu.caltech.nanodb.plans.PlanNode;
-import edu.caltech.nanodb.plans.PlanUtils;
-import edu.caltech.nanodb.plans.RenameNode;
-import edu.caltech.nanodb.plans.SelectNode;
 import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.TableInfo;
@@ -126,6 +120,83 @@ public class CostBasedJoinPlanner implements Planner {
         }
     }
 
+    /**
+     * Returns a projection node for the given select statement.
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The projection node.
+     */
+    private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
+        if (selClause.isTrivialProject()) {
+            return child;
+        }
+        List<SelectValue> columns = selClause.getSelectValues();
+        ProjectNode projNode = new ProjectNode(child, columns);
+        return projNode;
+    }
+
+    /**
+     * Returns an order-by node corresponding for the given select statement.
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The order-by node.
+     */
+    private PlanNode planOrderByClause(PlanNode child, SelectClause selClause) {
+        List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
+        if (!orderExpressions.isEmpty()) {
+            return new SortNode(child, orderExpressions);
+        }
+        return child;
+    }
+
+    /**
+     * Returns a plan node for the grouping/aggregation part of the select statement.
+     *
+     * Aggregation function calls are replaced with column references by AggregateReplacementProcessor. These,
+     * in turn, are employed during evaluation.
+     *
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The resultant node.
+     */
+    private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause) {
+
+        List<Expression> groupByExprs = selClause.getGroupByExprs();
+
+        // Replace aggregate function calls with column references.
+        AggregateReplacementProcessor processor = new AggregateReplacementProcessor();
+
+        for (SelectValue sv : selClause.getSelectValues()) {
+            if (!sv.isExpression())
+                continue;
+            Expression e = sv.getExpression().traverse(processor);
+            sv.setExpression(e);
+        }
+
+        // Update the having expression
+        if (selClause.getHavingExpr() != null) {
+            Expression e = selClause.getHavingExpr().traverse(processor);
+            selClause.setHavingExpr(e);
+        }
+
+        // Make sure there are no aggregate functions in the where / from clauses.
+        if (selClause.getWhereExpr() != null) {
+            processor.setErrorMessage("Aggregate functions in WHERE clauses are not allowed");
+            selClause.getWhereExpr().traverse(processor);
+        }
+        if (selClause.getFromClause() != null && selClause.getFromClause().getClauseType() ==
+                FromClause.ClauseType.JOIN_EXPR && selClause.getFromClause().getOnExpression() != null) {
+            processor.setErrorMessage("Aggregate functions in ON clauses are not allowed");
+            selClause.getFromClause().getOnExpression().traverse(processor);
+        }
+
+        if (processor.getGroupAggregates().isEmpty() && groupByExprs.isEmpty()) {
+            return child;
+        }
+
+        HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(child, groupByExprs, processor.getGroupAggregates());
+        return hashNode;
+    }
 
     /**
      * Returns the root of a plan tree suitable for executing the specified
@@ -171,9 +242,21 @@ public class CostBasedJoinPlanner implements Planner {
         // 5)  Handle other situations such as ORDER BY, or LIMIT/OFFSET if
         //     you have implemented this plan-node.
 
-        HashSet<Expression> f = new HashSet<Expression>();
-        f.add(selClause.getWhereExpr());
-        return makeJoinPlan(selClause.getFromClause(), f).joinPlan;
+        HashSet<Expression> conjuncts = new HashSet<Expression>();
+        if (selClause.getWhereExpr() != null) {
+            PredicateUtils.collectConjuncts(selClause.getWhereExpr(), conjuncts);
+        }
+        if (selClause.getHavingExpr() != null) {
+            PredicateUtils.collectConjuncts(selClause.getHavingExpr(), conjuncts);
+        }
+        JoinComponent joinComponent = makeJoinPlan(selClause.getFromClause(), conjuncts);
+        conjuncts.removeAll(joinComponent.conjunctsUsed);
+        // TODO: handle unused conjuncts. In particular, having clauses which haven't been applied.
+        PlanNode res = planGroupingAggregation(joinComponent.joinPlan, selClause);
+        res = planProjectClause(res, selClause);
+        res = planOrderByClause(res, selClause);
+        res.prepare();
+        return res;
     }
 
 
