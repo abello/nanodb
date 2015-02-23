@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.antlr.stringtemplate.language.Expr;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
@@ -170,7 +171,9 @@ public class CostBasedJoinPlanner implements Planner {
         // 5)  Handle other situations such as ORDER BY, or LIMIT/OFFSET if
         //     you have implemented this plan-node.
 
-        return makeJoinPlan(selClause.getFromClause(), null).joinPlan;
+        HashSet<Expression> f = new HashSet<Expression>();
+        f.add(selClause.getWhereExpr());
+        return makeJoinPlan(selClause.getFromClause(), f).joinPlan;
     }
 
 
@@ -406,7 +409,7 @@ public class CostBasedJoinPlanner implements Planner {
         
         Expression expr = PredicateUtils.makePredicate(dstExprs);
         if (expr != null) {
-            PlanUtils.addPredicateToPlan(node, expr);
+            node = PlanUtils.addPredicateToPlan(node, expr);
             leafConjuncts.addAll(dstExprs);
             node.prepare();
         }
