@@ -14,6 +14,7 @@ import edu.caltech.nanodb.commands.SelectValue;
 import edu.caltech.nanodb.expressions.*;
 import edu.caltech.nanodb.plans.*;
 
+import edu.caltech.nanodb.relations.ColumnInfo;
 import org.antlr.stringtemplate.language.Expr;
 import org.apache.log4j.Logger;
 
@@ -137,7 +138,21 @@ public class CostBasedJoinPlanner implements Planner {
         // TODO: What if it's a trivial project with a join with ON? In that case
         // we still want to use the schema from selClause.getFromClause().getPreparedSchema()...
         if (selClause.isTrivialProject()) {
-            return projNode;
+            if (false) {
+                // TODO: DEBUG
+                Schema schema = selClause.getFromClause().getPreparedSchema();
+                List<SelectValue> selValues = new ArrayList<SelectValue>();
+                for (ColumnInfo colInfo : schema) {
+                    SelectValue sv = new SelectValue(colInfo.getColumnName());
+                    selValues.add(sv);
+                }
+                System.out.println(String.format("--------------------------- %s", selValues));
+                projNode = new ProjectNode(child, selValues);
+                return projNode;
+            }
+            else {
+                return projNode;
+            }
         }
         List<SelectValue> columns = selClause.getSelectValues();
         projNode = new ProjectNode(child, columns);
