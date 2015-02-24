@@ -13,6 +13,7 @@ import java.util.Set;
 import edu.caltech.nanodb.commands.SelectValue;
 import edu.caltech.nanodb.expressions.*;
 import edu.caltech.nanodb.plans.*;
+
 import org.antlr.stringtemplate.language.Expr;
 import org.apache.log4j.Logger;
 
@@ -126,11 +127,15 @@ public class CostBasedJoinPlanner implements Planner {
      * @return The projection node.
      */
     private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
+        PlanNode projNode = child;
+        List<SelectValue> finalSchema = selClause.getFromClause().getPreparedSelectValues();
+        if (finalSchema != null) 
+            projNode = new ProjectNode(child, finalSchema);
         if (selClause.isTrivialProject()) {
-            return child;
+            return projNode;
         }
         List<SelectValue> columns = selClause.getSelectValues();
-        ProjectNode projNode = new ProjectNode(child, columns);
+        projNode = new ProjectNode(child, columns);
         return projNode;
     }
 
