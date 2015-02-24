@@ -224,8 +224,9 @@ public class CostBasedJoinPlanner implements Planner {
             throw new UnsupportedOperationException(
                 "NanoDB doesn't yet support SQL queries without a FROM clause!");
         }
-        else
+        else {
             fromClause.prepare(storageManager.getTableManager());
+        }
 
         // TODO:  Implement!
         //
@@ -322,6 +323,9 @@ public class CostBasedJoinPlanner implements Planner {
         PlanNode plan = optimalJoin.joinPlan;
         logger.info("Optimal join plan generated:\n" +
             PlanNode.printNodeTreeToString(plan, true));
+
+        logger.debug("extraConjuncts:\n" +
+                extraConjuncts);
 
         return optimalJoin;
     }
@@ -545,6 +549,10 @@ public class CostBasedJoinPlanner implements Planner {
         // Initially populate joinPlans with just the N leaf plans.
         for (JoinComponent leaf : leafComponents) {
             joinPlans.put(leaf.leavesUsed, leaf);
+        }
+
+        for (JoinComponent leafComponent: leafComponents) {
+            logger.debug(String.format("Leaf components received: %s", leafComponent.joinPlan));
         }
 
 

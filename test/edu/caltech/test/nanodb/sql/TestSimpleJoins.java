@@ -122,6 +122,15 @@ public class TestSimpleJoins extends SqlTestCase {
         CommandResult result;
 
         result = server.doCommand("SELECT * FROM test_joins_dup_3 AS t1 INNER JOIN test_joins_dup_4 AS t2 ON t1.b = t2.b", true);
+        // TODO: Debug only, remove eventually
+        System.out.println(">>>>>>>>> dbginf >>>>>>");
+        for (TupleLiteral tup : expected) {
+            System.out.println(" * " + tup.toString());
+        }
+        for (TupleLiteral tup : result.getTuples()) {
+            System.out.println(" * " + tup.toString());
+        }
+
         assert checkUnorderedResults(expected, result);
     }
 
