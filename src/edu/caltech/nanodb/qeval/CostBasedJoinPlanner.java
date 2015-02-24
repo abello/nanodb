@@ -129,8 +129,12 @@ public class CostBasedJoinPlanner implements Planner {
     private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
         PlanNode projNode = child;
         List<SelectValue> finalSchema = selClause.getFromClause().getPreparedSelectValues();
-        if (finalSchema != null) 
+        if (finalSchema != null) {
             projNode = new ProjectNode(child, finalSchema);
+        }
+
+        // TODO: What if it's a trivial project with a join with ON? In that case
+        // we still want to use the columns from selClause.getSelectedValues()...
         if (selClause.isTrivialProject()) {
             return projNode;
         }
@@ -258,6 +262,8 @@ public class CostBasedJoinPlanner implements Planner {
         conjuncts.removeAll(joinComponent.conjunctsUsed);
         // TODO: handle unused conjuncts. In particular, having clauses which haven't been applied.
         PlanNode res = planGroupingAggregation(joinComponent.joinPlan, selClause);
+        logger.debug("    Result plan:  " +
+                PlanNode.printNodeTreeToString(res, true));
         res = planProjectClause(res, selClause);
         res = planOrderByClause(res, selClause);
         res.prepare();
