@@ -573,7 +573,7 @@ public class CostBasedJoinPlanner implements Planner {
                     PredicateUtils.findExprsUsingSchemas(unusedConjuncts, false, exprs, jc.joinPlan.getSchema(), leaf.joinPlan.getSchema());
                     expr = PredicateUtils.makePredicate(exprs);
 
-                    PlanNode newPlan = new NestedLoopsJoinNode(jc.joinPlan, leaf.joinPlan, JoinType.CROSS, expr);
+                    PlanNode newPlan = new NestedLoopsJoinNode(jc.joinPlan, leaf.joinPlan, JoinType.INNER, expr);
                     newPlan.prepare();
                     float newCost = newPlan.getCost().cpuCost;
 
