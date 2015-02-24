@@ -10,19 +10,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.*;
+import edu.caltech.nanodb.plans.*;
+import org.antlr.stringtemplate.language.Expr;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
-import edu.caltech.nanodb.expressions.BooleanOperator;
-import edu.caltech.nanodb.expressions.Expression;
-import edu.caltech.nanodb.expressions.PredicateUtils;
-import edu.caltech.nanodb.plans.FileScanNode;
-import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
-import edu.caltech.nanodb.plans.PlanNode;
-import edu.caltech.nanodb.plans.PlanUtils;
-import edu.caltech.nanodb.plans.RenameNode;
-import edu.caltech.nanodb.plans.SelectNode;
 import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.TableInfo;
@@ -124,6 +119,83 @@ public class CostBasedJoinPlanner implements Planner {
         }
     }
 
+    /**
+     * Returns a projection node for the given select statement.
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The projection node.
+     */
+    private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
+        if (selClause.isTrivialProject()) {
+            return child;
+        }
+        List<SelectValue> columns = selClause.getSelectValues();
+        ProjectNode projNode = new ProjectNode(child, columns);
+        return projNode;
+    }
+
+    /**
+     * Returns an order-by node corresponding for the given select statement.
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The order-by node.
+     */
+    private PlanNode planOrderByClause(PlanNode child, SelectClause selClause) {
+        List<OrderByExpression> orderExpressions = selClause.getOrderByExprs();
+        if (!orderExpressions.isEmpty()) {
+            return new SortNode(child, orderExpressions);
+        }
+        return child;
+    }
+
+    /**
+     * Returns a plan node for the grouping/aggregation part of the select statement.
+     *
+     * Aggregation function calls are replaced with column references by AggregateReplacementProcessor. These,
+     * in turn, are employed during evaluation.
+     *
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The resultant node.
+     */
+    private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause) {
+
+        List<Expression> groupByExprs = selClause.getGroupByExprs();
+
+        // Replace aggregate function calls with column references.
+        AggregateReplacementProcessor processor = new AggregateReplacementProcessor();
+
+        for (SelectValue sv : selClause.getSelectValues()) {
+            if (!sv.isExpression())
+                continue;
+            Expression e = sv.getExpression().traverse(processor);
+            sv.setExpression(e);
+        }
+
+        // Update the having expression
+        if (selClause.getHavingExpr() != null) {
+            Expression e = selClause.getHavingExpr().traverse(processor);
+            selClause.setHavingExpr(e);
+        }
+
+        // Make sure there are no aggregate functions in the where / from clauses.
+        if (selClause.getWhereExpr() != null) {
+            processor.setErrorMessage("Aggregate functions in WHERE clauses are not allowed");
+            selClause.getWhereExpr().traverse(processor);
+        }
+        if (selClause.getFromClause() != null && selClause.getFromClause().getClauseType() ==
+                FromClause.ClauseType.JOIN_EXPR && selClause.getFromClause().getOnExpression() != null) {
+            processor.setErrorMessage("Aggregate functions in ON clauses are not allowed");
+            selClause.getFromClause().getOnExpression().traverse(processor);
+        }
+
+        if (processor.getGroupAggregates().isEmpty() && groupByExprs.isEmpty()) {
+            return child;
+        }
+
+        HashedGroupAggregateNode hashNode = new HashedGroupAggregateNode(child, groupByExprs, processor.getGroupAggregates());
+        return hashNode;
+    }
 
     /**
      * Returns the root of a plan tree suitable for executing the specified
@@ -169,7 +241,21 @@ public class CostBasedJoinPlanner implements Planner {
         // 5)  Handle other situations such as ORDER BY, or LIMIT/OFFSET if
         //     you have implemented this plan-node.
 
-        return null;
+        HashSet<Expression> conjuncts = new HashSet<Expression>();
+        if (selClause.getWhereExpr() != null) {
+            PredicateUtils.collectConjuncts(selClause.getWhereExpr(), conjuncts);
+        }
+        if (selClause.getHavingExpr() != null) {
+            PredicateUtils.collectConjuncts(selClause.getHavingExpr(), conjuncts);
+        }
+        JoinComponent joinComponent = makeJoinPlan(selClause.getFromClause(), conjuncts);
+        conjuncts.removeAll(joinComponent.conjunctsUsed);
+        // TODO: handle unused conjuncts. In particular, having clauses which haven't been applied.
+        PlanNode res = planGroupingAggregation(joinComponent.joinPlan, selClause);
+        res = planProjectClause(res, selClause);
+        res = planOrderByClause(res, selClause);
+        res.prepare();
+        return res;
     }
 
 
@@ -250,8 +336,7 @@ public class CostBasedJoinPlanner implements Planner {
      */
     private void collectDetails(FromClause fromClause,
         HashSet<Expression> conjuncts, ArrayList<FromClause> leafFromClauses) {
-        if (fromClause.isBaseTable() || fromClause.isOuterJoin() ||
-                fromClause.isDerivedTable()) {
+        if (fromClause.isBaseTable() || fromClause.isDerivedTable() || fromClause.isOuterJoin()) {
             leafFromClauses.add(fromClause);
         }
         else if (fromClause.isJoinExpr()) {
@@ -408,7 +493,7 @@ public class CostBasedJoinPlanner implements Planner {
         
         Expression expr = PredicateUtils.makePredicate(dstExprs);
         if (expr != null) {
-            PlanUtils.addPredicateToPlan(node, expr);
+            node = PlanUtils.addPredicateToPlan(node, expr);
             leafConjuncts.addAll(dstExprs);
             node.prepare();
         }
@@ -453,8 +538,10 @@ public class CostBasedJoinPlanner implements Planner {
             new HashMap<HashSet<PlanNode>, JoinComponent>();
 
         // Initially populate joinPlans with just the N leaf plans.
-        for (JoinComponent leaf : leafComponents)
+        for (JoinComponent leaf : leafComponents) {
             joinPlans.put(leaf.leavesUsed, leaf);
+        }
+
 
         while (joinPlans.size() > 1) {
             logger.debug("Current set of join-plans has " + joinPlans.size() +
@@ -468,6 +555,52 @@ public class CostBasedJoinPlanner implements Planner {
 
             // TODO:  IMPLEMENT THE CODE THAT GENERATES OPTIMAL PLANS THAT
             //        JOIN N + 1 LEAVES
+
+            for (HashSet<PlanNode> leafSet : joinPlans.keySet()) {
+                JoinComponent jc = joinPlans.get(leafSet);
+                for (JoinComponent leaf : leafComponents) {
+                    if (leafSet.contains(leaf.joinPlan)) {
+                        continue;
+                    }
+                    Expression expr = null;
+
+                    HashSet<Expression> subplanConjuncts = new HashSet<Expression>(jc.conjunctsUsed);
+                    subplanConjuncts.addAll(new HashSet<Expression>(leaf.conjunctsUsed));
+                    HashSet<Expression> unusedConjuncts = new HashSet<Expression>(conjuncts);
+                    unusedConjuncts.removeAll(subplanConjuncts);
+
+                    // Conjuncts applicable to the join of the two subplans.
+                    HashSet<Expression> exprs = new HashSet<Expression>();
+                    PredicateUtils.findExprsUsingSchemas(unusedConjuncts, false, exprs, jc.joinPlan.getSchema(), leaf.joinPlan.getSchema());
+                    expr = PredicateUtils.makePredicate(exprs);
+
+                    PlanNode newPlan = new NestedLoopsJoinNode(jc.joinPlan, leaf.joinPlan, JoinType.INNER, expr);
+                    newPlan.prepare();
+                    float newCost = newPlan.getCost().cpuCost;
+
+                    HashSet<PlanNode> unionLeafSet = new HashSet<PlanNode>(leafSet);
+                    unionLeafSet.add(leaf.joinPlan);
+                    if (nextJoinPlans.containsKey(unionLeafSet)) {
+                        JoinComponent bestJC = nextJoinPlans.get(unionLeafSet);
+                        float bestCost = nextJoinPlans.get(unionLeafSet).joinPlan.getCost().cpuCost;
+                        if (newCost < bestCost) {
+                            HashSet<Expression> newConjuncts = new HashSet<Expression>(bestJC.conjunctsUsed);
+                            newConjuncts.add(expr);
+                            JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
+                            newJC.leavesUsed = unionLeafSet;
+                            nextJoinPlans.put(unionLeafSet, newJC);
+                        }
+                    } else {
+                        HashSet<Expression> newConjuncts = new HashSet<Expression>(jc.conjunctsUsed);
+                        if (expr != null) {
+                            newConjuncts.add(expr);
+                        }
+                        JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
+                        newJC.leavesUsed = unionLeafSet;
+                        nextJoinPlans.put(unionLeafSet, newJC);
+                    }
+                }
+            }
 
             // Now that we have generated all plans joining N leaves, time to
             // create all plans joining N + 1 leaves.
