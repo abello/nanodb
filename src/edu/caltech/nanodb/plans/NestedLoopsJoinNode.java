@@ -174,6 +174,9 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
         float numTuples = rightChild.getCost().numTuples * leftChild.getCost().numTuples;
         numTuples *= SelectivityEstimator.estimateSelectivity(predicate, schema, stats);
 
+        // TODO: Remove when we've finished debugging
+        System.out.println(String.format("Join type is %s", super.joinType));
+
         switch (super.joinType) {
             case INNER:
                 break;

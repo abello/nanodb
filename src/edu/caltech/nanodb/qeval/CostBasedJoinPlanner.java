@@ -504,6 +504,7 @@ public class CostBasedJoinPlanner implements Planner {
         if (expr != null) {
             node = PlanUtils.addPredicateToPlan(node, expr);
             leafConjuncts.addAll(dstExprs);
+
             node.prepare();
         }
         
