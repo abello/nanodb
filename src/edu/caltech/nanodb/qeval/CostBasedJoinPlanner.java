@@ -13,7 +13,6 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
-import edu.caltech.nanodb.commands.FromClause.ClauseType;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.expressions.BooleanOperator;
 import edu.caltech.nanodb.expressions.Expression;
@@ -361,6 +360,8 @@ public class CostBasedJoinPlanner implements Planner {
             node = new RenameNode(node, fromClause.getResultName());
             break;
         case JOIN_EXPR:
+            assert fromClause.hasOuterJoinOnLeft() || 
+                fromClause.hasOuterJoinOnRight() : "Join is not outer!";
             FromClause fromLeft = fromClause.getLeftChild();
             FromClause fromRight = fromClause.getRightChild();
             HashSet<Expression> extraConjuncts = new HashSet<Expression>();
