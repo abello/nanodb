@@ -479,10 +479,10 @@ public class CostBasedJoinPlanner implements Planner {
             leafConjuncts.addAll(right.conjunctsUsed);
             PlanNode leftNode = left.joinPlan;
             PlanNode rightNode = right.joinPlan;
-            
+
             // Combine the two JoinComponent objects.
             node = new NestedLoopsJoinNode(leftNode, rightNode,
-                    JoinType.LEFT_OUTER, null);
+                    JoinType.LEFT_OUTER, fromClause.getPreparedJoinExpr());
             if (fromClause.hasOuterJoinOnRight()) {
                 // Right outer is not implemented in the NestedLoopsJoinNode, so
                 // just do a left outer and call swap() to swap the left and right
