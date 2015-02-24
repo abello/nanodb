@@ -537,8 +537,10 @@ public class CostBasedJoinPlanner implements Planner {
             new HashMap<HashSet<PlanNode>, JoinComponent>();
 
         // Initially populate joinPlans with just the N leaf plans.
-        for (JoinComponent leaf : leafComponents)
+        for (JoinComponent leaf : leafComponents) {
             joinPlans.put(leaf.leavesUsed, leaf);
+        }
+
 
         while (joinPlans.size() > 1) {
             logger.debug("Current set of join-plans has " + joinPlans.size() +
@@ -552,6 +554,52 @@ public class CostBasedJoinPlanner implements Planner {
 
             // TODO:  IMPLEMENT THE CODE THAT GENERATES OPTIMAL PLANS THAT
             //        JOIN N + 1 LEAVES
+
+            for (HashSet<PlanNode> leafSet : joinPlans.keySet()) {
+                JoinComponent jc = joinPlans.get(leafSet);
+                for (JoinComponent leaf : leafComponents) {
+                    if (leafSet.contains(leaf.joinPlan)) {
+                        continue;
+                    }
+                    Expression expr = null;
+
+                    HashSet<Expression> subplanConjuncts = new HashSet<Expression>(jc.conjunctsUsed);
+                    subplanConjuncts.addAll(new HashSet<Expression>(leaf.conjunctsUsed));
+                    HashSet<Expression> unusedConjuncts = new HashSet<Expression>(conjuncts);
+                    unusedConjuncts.removeAll(subplanConjuncts);
+
+                    // Conjuncts applicable to the join of the two subplans.
+                    HashSet<Expression> exprs = new HashSet<Expression>();
+                    PredicateUtils.findExprsUsingSchemas(unusedConjuncts, false, exprs, jc.joinPlan.getSchema(), leaf.joinPlan.getSchema());
+                    expr = PredicateUtils.makePredicate(exprs);
+
+                    PlanNode newPlan = new NestedLoopsJoinNode(jc.joinPlan, leaf.joinPlan, JoinType.CROSS, expr);
+                    newPlan.prepare();
+                    float newCost = newPlan.getCost().cpuCost;
+
+                    HashSet<PlanNode> unionLeafSet = new HashSet<PlanNode>(leafSet);
+                    unionLeafSet.add(leaf.joinPlan);
+                    if (nextJoinPlans.containsKey(unionLeafSet)) {
+                        JoinComponent bestJC = nextJoinPlans.get(unionLeafSet);
+                        float bestCost = nextJoinPlans.get(unionLeafSet).joinPlan.getCost().cpuCost;
+                        if (newCost < bestCost) {
+                            HashSet<Expression> newConjuncts = new HashSet<Expression>(bestJC.conjunctsUsed);
+                            newConjuncts.add(expr);
+                            JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
+                            newJC.leavesUsed = unionLeafSet;
+                            nextJoinPlans.put(unionLeafSet, newJC);
+                        }
+                    } else {
+                        HashSet<Expression> newConjuncts = new HashSet<Expression>(jc.conjunctsUsed);
+                        if (expr != null) {
+                            newConjuncts.add(expr);
+                        }
+                        JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
+                        newJC.leavesUsed = unionLeafSet;
+                        nextJoinPlans.put(unionLeafSet, newJC);
+                    }
+                }
+            }
 
             // Now that we have generated all plans joining N leaves, time to
             // create all plans joining N + 1 leaves.
