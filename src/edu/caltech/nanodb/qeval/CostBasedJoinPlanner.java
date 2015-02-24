@@ -129,12 +129,13 @@ public class CostBasedJoinPlanner implements Planner {
     private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
         PlanNode projNode = child;
         List<SelectValue> finalSchema = selClause.getFromClause().getPreparedSelectValues();
+        logger.debug(String.format("preparedSchema: %s", selClause.getFromClause().getPreparedSchema()));
         if (finalSchema != null) {
             projNode = new ProjectNode(child, finalSchema);
         }
 
         // TODO: What if it's a trivial project with a join with ON? In that case
-        // we still want to use the columns from selClause.getSelectedValues()...
+        // we still want to use the schema from selClause.getFromClause().getPreparedSchema()...
         if (selClause.isTrivialProject()) {
             return projNode;
         }
