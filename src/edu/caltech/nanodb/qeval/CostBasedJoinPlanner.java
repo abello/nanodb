@@ -145,6 +145,7 @@ public class CostBasedJoinPlanner implements Planner {
                 Schema schema = selClause.getFromClause().getPreparedSchema();
                 List<SelectValue> selValues = new ArrayList<SelectValue>();
                 for (ColumnInfo columnInfo: schema.getColumnInfos()) {
+                    // TODO: Find correct alias instead of null
                     SelectValue sv = new SelectValue(new ColumnValue(columnInfo.getColumnName()), null);
                     selValues.add(sv);
                 }
@@ -242,15 +243,17 @@ public class CostBasedJoinPlanner implements Planner {
         // and turn it into a tree of plan nodes.
 
         FromClause fromClause = selClause.getFromClause();
+
         if (fromClause == null) {
-            throw new UnsupportedOperationException(
-                "NanoDB doesn't yet support SQL queries without a FROM clause!");
+            List<SelectValue> columns = selClause.getSelectValues();
+            ProjectNode projNode = new ProjectNode(null, columns);
+            projNode.prepare();
+            return projNode;
         }
         else {
             fromClause.prepare(storageManager.getTableManager());
         }
 
-        // TODO:  Implement!
         //
         // These are the general steps to follow, although this must be
         // modified to also support grouping and aggregates:
@@ -276,14 +279,28 @@ public class CostBasedJoinPlanner implements Planner {
         if (selClause.getHavingExpr() != null) {
             PredicateUtils.collectConjuncts(selClause.getHavingExpr(), conjuncts);
         }
+        PlanNode res = null;
+
         JoinComponent joinComponent = makeJoinPlan(selClause.getFromClause(), conjuncts);
         conjuncts.removeAll(joinComponent.conjunctsUsed);
-        // TODO: handle unused conjuncts. In particular, having clauses which haven't been applied.
-        PlanNode res = planGroupingAggregation(joinComponent.joinPlan, selClause);
+
+        res = planGroupingAggregation(joinComponent.joinPlan, selClause);
         logger.debug("    Result plan:  " +
                 PlanNode.printNodeTreeToString(res, true));
+
+        if (!conjuncts.isEmpty()) {
+            Expression unusedExpr = PredicateUtils.makePredicate(conjuncts);
+            res = new SimpleFilterNode(res, unusedExpr);
+        }
+
         res = planProjectClause(res, selClause);
+        logger.debug("    Result plan:  " +
+                PlanNode.printNodeTreeToString(res, true));
+
         res = planOrderByClause(res, selClause);
+        logger.debug("    Result plan:  " +
+                PlanNode.printNodeTreeToString(res, true));
+
         res.prepare();
         return res;
     }
