@@ -129,24 +129,26 @@ public class CostBasedJoinPlanner implements Planner {
      */
     private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
         PlanNode projNode = child;
+
+        // TODO: Betteer name
         List<SelectValue> finalSchema = selClause.getFromClause().getPreparedSelectValues();
         logger.debug(String.format("preparedSchema: %s", selClause.getFromClause().getPreparedSchema()));
+        logger.debug(String.format("preparedSelectedValues: %s", selClause.getFromClause().getPreparedSelectValues()));
         if (finalSchema != null) {
             projNode = new ProjectNode(child, finalSchema);
         }
 
-        // TODO: What if it's a trivial project with a join with ON? In that case
-        // we still want to use the schema from selClause.getFromClause().getPreparedSchema()...
         if (selClause.isTrivialProject()) {
-            if (false) {
+            // finalSchema is null when we're doing an ON join
+            if (finalSchema == null) {
                 // TODO: DEBUG
                 Schema schema = selClause.getFromClause().getPreparedSchema();
                 List<SelectValue> selValues = new ArrayList<SelectValue>();
-                for (ColumnInfo colInfo : schema) {
-                    SelectValue sv = new SelectValue(colInfo.getColumnName());
+                for (ColumnInfo columnInfo: schema.getColumnInfos()) {
+                    SelectValue sv = new SelectValue(new ColumnValue(columnInfo.getColumnName()), null);
                     selValues.add(sv);
                 }
-                System.out.println(String.format("--------------------------- %s", selValues));
+                // System.out.println(String.format("--------------------------- %s", selValues));
                 projNode = new ProjectNode(child, selValues);
                 return projNode;
             }
