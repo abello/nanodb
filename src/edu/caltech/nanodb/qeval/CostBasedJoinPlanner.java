@@ -301,7 +301,7 @@ public class CostBasedJoinPlanner implements Planner {
         res = planGroupingAggregation(joinComponent.joinPlan, selClause, processor);
         logger.debug("    Result plan:  " +
                 PlanNode.printNodeTreeToString(res, true));
-
+        
         if (!conjuncts.isEmpty()) {
             Expression unusedExpr = PredicateUtils.makePredicate(conjuncts);
             res = new SimpleFilterNode(res, unusedExpr);
@@ -514,8 +514,6 @@ public class CostBasedJoinPlanner implements Planner {
     	HashSet<Expression> conjunctsCopy = new HashSet<Expression>(conjuncts);
         
         PlanNode node = null;
-        // The set of expressions applicable to fromClause
-        HashSet<Expression> dstExprs = new HashSet<Expression>();
         Schema schema;
         
         switch (fromClause.getClauseType()) {
@@ -523,19 +521,18 @@ public class CostBasedJoinPlanner implements Planner {
             HashSet<Expression> baseExprs = new HashSet<Expression>();
         	schema = fromClause.getPreparedSchema();
             PredicateUtils.findExprsUsingSchemas(conjunctsCopy, true, baseExprs, schema);
-            leafConjuncts.addAll(baseExprs);
+            if (!baseExprs.isEmpty()) 
+            	leafConjuncts.addAll(baseExprs);
             Expression expr = PredicateUtils.makePredicate(baseExprs);
             
             node = makeSimpleSelect(fromClause.getTableName(), expr, null);
-            if (fromClause.isRenamed()) {
+            if (fromClause.isRenamed())
             	node = new RenameNode(node, fromClause.getResultName());
-            }
             break;
         case SELECT_SUBQUERY:
             node = makePlan(fromClause.getSelectClause(), null);
-            if (fromClause.isRenamed()) {
+            if (fromClause.isRenamed()) 
             	node = new RenameNode(node, fromClause.getResultName());
-            }
             break;
         case JOIN_EXPR:
             assert fromClause.hasOuterJoinOnLeft() || 
@@ -545,22 +542,24 @@ public class CostBasedJoinPlanner implements Planner {
             HashSet<Expression> extraConjuncts = new HashSet<Expression>();
             schema = null;
             
-            if (fromClause.hasOuterJoinOnLeft()) {
+            if (fromClause.hasOuterJoinOnLeft()) 
                 schema = fromLeft.getPreparedSchema();
-            }
-            else if (fromClause.hasOuterJoinOnRight()) {
+            else if (fromClause.hasOuterJoinOnRight()) 
                 schema = fromRight.getPreparedSchema();
-            }
             
             // Only pass in conjuncts that correspond to the child from-clause
             // that is outer joined (i.e. left or right), per the equivalence
             // rule sigma_theta1(E1 LOJ E2) = sigma_theta1(E1) LOJ E2, where 
             // theta1 refers only to attributes in E1. 
-            PredicateUtils.findExprsUsingSchemas(conjunctsCopy, false, extraConjuncts, schema);
-            JoinComponent left = makeJoinPlan(fromLeft, extraConjuncts);
-            JoinComponent right = makeJoinPlan(fromRight, extraConjuncts);
-            leafConjuncts.addAll(left.conjunctsUsed);
-            leafConjuncts.addAll(right.conjunctsUsed);
+            PredicateUtils.findExprsUsingSchemas(conjunctsCopy, true, extraConjuncts, schema);
+            JoinComponent left = makeJoinPlan(fromLeft, 
+            		fromClause.hasOuterJoinOnLeft() ? extraConjuncts : null);
+            JoinComponent right = makeJoinPlan(fromRight, 
+            		fromClause.hasOuterJoinOnRight() ? extraConjuncts : null);
+            if (!left.conjunctsUsed.isEmpty())
+            	leafConjuncts.addAll(left.conjunctsUsed);
+            if (!right.conjunctsUsed.isEmpty())
+            	leafConjuncts.addAll(right.conjunctsUsed);
             PlanNode leftNode = left.joinPlan;
             PlanNode rightNode = right.joinPlan;
 
@@ -578,6 +577,8 @@ public class CostBasedJoinPlanner implements Planner {
         default:
             break;
         }
+        // The set of expressions applicable to fromClause
+        HashSet<Expression> dstExprs = new HashSet<Expression>();
         
         // Prepare the node to compute its schema.
         node.prepare();
@@ -685,7 +686,7 @@ public class CostBasedJoinPlanner implements Planner {
                         if (newCost < bestCost) {
                             logger.debug(String.format("Found better cost: newCost %f, bestCost %f", newCost, bestCost));
                             HashSet<Expression> newConjuncts = new HashSet<Expression>(bestJC.conjunctsUsed);
-                            newConjuncts.add(expr);
+                            newConjuncts.addAll(exprs);
                             JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
                             newJC.leavesUsed = unionLeafSet;
                             nextJoinPlans.put(unionLeafSet, newJC);
@@ -693,7 +694,7 @@ public class CostBasedJoinPlanner implements Planner {
                     } else {
                         HashSet<Expression> newConjuncts = new HashSet<Expression>(jc.conjunctsUsed);
                         if (expr != null) {
-                            newConjuncts.add(expr);
+                            newConjuncts.addAll(exprs);
                         }
                         JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
                         newJC.leavesUsed = unionLeafSet;
