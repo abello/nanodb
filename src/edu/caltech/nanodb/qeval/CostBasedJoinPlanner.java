@@ -141,7 +141,7 @@ public class CostBasedJoinPlanner implements Planner {
         if (selClause.isTrivialProject()) {
             // finalSchema is null when we're doing an ON join.
             // This is handling a trivial projection of an inner join of two tables
-            if (finalSchema == null) {
+            if (finalSchema == null && selClause.getFromClause().isJoinExpr()) {
                 Schema schema = selClause.getFromClause().getPreparedSchema();
                 List<SelectValue> selValues = new ArrayList<SelectValue>();
                 // constructing the selectValues from the schema, so that the produced columns
