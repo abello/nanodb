@@ -685,7 +685,7 @@ public class CostBasedJoinPlanner implements Planner {
                         if (newCost < bestCost) {
                             logger.debug(String.format("Found better cost: newCost %f, bestCost %f", newCost, bestCost));
                             HashSet<Expression> newConjuncts = new HashSet<Expression>(bestJC.conjunctsUsed);
-                            newConjuncts.addAll(exprs);
+                            newConjuncts.add(expr);
                             JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
                             newJC.leavesUsed = unionLeafSet;
                             nextJoinPlans.put(unionLeafSet, newJC);
@@ -693,7 +693,7 @@ public class CostBasedJoinPlanner implements Planner {
                     } else {
                         HashSet<Expression> newConjuncts = new HashSet<Expression>(jc.conjunctsUsed);
                         if (expr != null) {
-                            newConjuncts.addAll(exprs);
+                            newConjuncts.add(expr);
                         }
                         JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
                         newJC.leavesUsed = unionLeafSet;
