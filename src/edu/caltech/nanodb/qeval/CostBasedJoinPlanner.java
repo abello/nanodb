@@ -482,21 +482,30 @@ public class CostBasedJoinPlanner implements Planner {
     private PlanNode makeLeafPlan(FromClause fromClause,
         Collection<Expression> conjuncts, HashSet<Expression> leafConjuncts)
         throws IOException {
+    	
+    	HashSet<Expression> conjunctsCopy = new HashSet<Expression>(conjuncts);
         
         PlanNode node = null;
         // The set of expressions applicable to fromClause
         HashSet<Expression> dstExprs = new HashSet<Expression>();
+        Schema schema;
         
         switch (fromClause.getClauseType()) {
         case BASE_TABLE:
-            node = makeSimpleSelect(fromClause.getTableName(),
-                    null, null);
-            node = new RenameNode(node, fromClause.getResultName());
+        	schema = fromClause.getPreparedSchema();
+            PredicateUtils.findExprsUsingSchemas(conjunctsCopy, true, dstExprs, schema);
+            Expression expr = PredicateUtils.makePredicate(dstExprs);
+            
+            node = makeSimpleSelect(fromClause.getTableName(), expr, null);
+            if (fromClause.isRenamed()) {
+            	node = new RenameNode(node, fromClause.getResultName());
+            }
             break;
         case SELECT_SUBQUERY:
-            // TODO: second argument here -- should it be null?
             node = makePlan(fromClause.getSelectClause(), null);
-            node = new RenameNode(node, fromClause.getResultName());
+            if (fromClause.isRenamed()) {
+            	node = new RenameNode(node, fromClause.getResultName());
+            }
             break;
         case JOIN_EXPR:
             assert fromClause.hasOuterJoinOnLeft() || 
@@ -504,7 +513,7 @@ public class CostBasedJoinPlanner implements Planner {
             FromClause fromLeft = fromClause.getLeftChild();
             FromClause fromRight = fromClause.getRightChild();
             HashSet<Expression> extraConjuncts = new HashSet<Expression>();
-            Schema schema = null;
+            schema = null;
             
             if (fromClause.hasOuterJoinOnLeft()) {
                 schema = fromLeft.getPreparedSchema();
@@ -517,7 +526,7 @@ public class CostBasedJoinPlanner implements Planner {
             // that is outer joined (i.e. left or right), per the equivalence
             // rule sigma_theta1(E1 LOJ E2) = sigma_theta1(E1) LOJ E2, where 
             // theta1 refers only to attributes in E1. 
-            PredicateUtils.findExprsUsingSchemas(conjuncts, false, extraConjuncts, schema);
+            PredicateUtils.findExprsUsingSchemas(conjunctsCopy, false, extraConjuncts, schema);
             JoinComponent left = makeJoinPlan(fromLeft, extraConjuncts);
             JoinComponent right = makeJoinPlan(fromRight, extraConjuncts);
             leafConjuncts.addAll(left.conjunctsUsed);
@@ -542,8 +551,8 @@ public class CostBasedJoinPlanner implements Planner {
         
         // Prepare the node to compute its schema.
         node.prepare();
-        Schema schema = node.getSchema();
-        PredicateUtils.findExprsUsingSchemas(conjuncts, false, dstExprs, schema);
+        schema = node.getSchema();
+        PredicateUtils.findExprsUsingSchemas(conjunctsCopy, false, dstExprs, schema);
         
         Expression expr = PredicateUtils.makePredicate(dstExprs);
         if (expr != null) {
