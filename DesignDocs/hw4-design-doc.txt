@@ -6,11 +6,11 @@ A:  Logistics
 
 A1.  List your team name and the people who worked on this assignment.
 
-     <team name>
+     BBB
 
-     <name>
-     <name>
-     ...
+     Ryan Batterman
+     Alex Bello
+     Ronnel Boettcher
 
 A2.  Specify the tag name and commit-hash of the Git version you are
      submitting for your assignment.  (You can list the commit hashes
@@ -21,6 +21,8 @@ A2.  Specify the tag name and commit-hash of the Git version you are
 
 A3.  Specify any late tokens you are applying to this assignment, or
      "none" if no late tokens.
+
+     none
 
 A4.  Briefly describe what parts of the assignment each teammate focused on.
 
