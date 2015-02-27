@@ -64,7 +64,6 @@ public class GeneralPlanner implements Planner {
     @Override
     public PlanNode makePlan(SelectClause selClause,
                              List<SelectClause> enclosingSelects) throws IOException {
-        System.out.println(selClause);
         if (enclosingSelects != null && !enclosingSelects.isEmpty()) {
             throw new UnsupportedOperationException(
                     "Not yet implemented:  enclosing queries!");

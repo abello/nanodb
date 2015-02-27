@@ -143,7 +143,6 @@ public class CostBasedJoinPlanner implements Planner {
     private PlanNode planProjectClause(PlanNode child, SelectClause selClause) {
         PlanNode projNode = child;
 
-        // TODO: Betteer name
         List<SelectValue> finalSchema = selClause.getFromClause().getPreparedSelectValues();
         logger.debug(String.format("preparedSchema: %s", selClause.getFromClause().getPreparedSchema()));
         logger.debug(String.format("preparedSelectedValues: %s", selClause.getFromClause().getPreparedSelectValues()));
@@ -152,17 +151,17 @@ public class CostBasedJoinPlanner implements Planner {
         }
 
         if (selClause.isTrivialProject()) {
-            // finalSchema is null when we're doing an ON join
+            // finalSchema is null when we're doing an ON join.
+            // This is handling a trivial projection of an inner join of two tables
             if (finalSchema == null) {
-                // TODO: DEBUG
                 Schema schema = selClause.getFromClause().getPreparedSchema();
                 List<SelectValue> selValues = new ArrayList<SelectValue>();
+                // constructing the selectValues from the schema, so that the produced columns
+                // are in the same order as in the query (the optimized plan might have reordered them)
                 for (ColumnInfo columnInfo: schema.getColumnInfos()) {
-                    // TODO: Find correct alias instead of null
                     SelectValue sv = new SelectValue(new ColumnValue(columnInfo.getColumnName()), null);
                     selValues.add(sv);
                 }
-                // System.out.println(String.format("--------------------------- %s", selValues));
                 projNode = new ProjectNode(child, selValues);
                 return projNode;
             }
