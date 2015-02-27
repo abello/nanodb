@@ -520,9 +520,11 @@ public class CostBasedJoinPlanner implements Planner {
         
         switch (fromClause.getClauseType()) {
         case BASE_TABLE:
+            HashSet<Expression> baseExprs = new HashSet<Expression>();
         	schema = fromClause.getPreparedSchema();
-            PredicateUtils.findExprsUsingSchemas(conjunctsCopy, true, dstExprs, schema);
-            Expression expr = PredicateUtils.makePredicate(dstExprs);
+            PredicateUtils.findExprsUsingSchemas(conjunctsCopy, true, baseExprs, schema);
+            leafConjuncts.addAll(baseExprs);
+            Expression expr = PredicateUtils.makePredicate(baseExprs);
             
             node = makeSimpleSelect(fromClause.getTableName(), expr, null);
             if (fromClause.isRenamed()) {
@@ -626,6 +628,7 @@ public class CostBasedJoinPlanner implements Planner {
         //   * etc.
         // At the end, the collection will contain ONE entry, which is the
         // optimal way to join all N leaves.  Go Go Gadget Dynamic Programming!
+
         HashMap<HashSet<PlanNode>, JoinComponent> joinPlans =
             new HashMap<HashSet<PlanNode>, JoinComponent>();
 
