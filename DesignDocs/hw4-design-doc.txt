@@ -63,13 +63,68 @@ to write explanatory notes after your output.
 
 C1.  EXPLAIN SELECT * FROM cities WHERE population > 5000000;
 
-C2.  EXPLAIN SELECT store_id FROM stores, cities     WHERE stores.city_id = cities.city_id AND
-           cities.population > 1000000;
+Explain Plan:
+    Project[values:  [CITIES.CITY_ID, CITIES.CITY_NAME, CITIES.POPULATION, CITIES.STATE_ID]] cost=[tuples=254.0, tupSize=23.8, cpuCost=508.0, blockIOs=1]
+        FileScan[table:  CITIES, pred:  CITIES.POPULATION > 5000000 AND CITIES.POPULATION > 5000000] cost=[tuples=254.0, tupSize=23.8, cpuCost=254.0, blockIOs=1]
 
-C3.  EXPLAIN SELECT store_id FROM stores JOIN                    (SELECT city_id FROM cities                     WHERE population > 1000000) AS big_cities                    ON stores.city_id = big_cities.city_id;
+Estimated 254.000000 tuples with average size 23.787401
+Estimated number of block IOs:  1
 
-C4.  EXPLAIN SELECT store_id, property_costs     FROM stores, cities, states     WHERE stores.city_id = cities.city_id AND
-           cities.state_id = states.state_id AND           state_name = 'Oregon' AND property_costs > 500000;
+
+
+*------------------------------------------------------------------------*
+C2.  EXPLAIN SELECT store_id FROM stores, cities 
+            WHERE stores.city_id = cities.city_id AND
+            cities.population > 1000000;
+
+Explain Plan:
+    Project[values:  [STORES.STORE_ID]] cost=[tuples=2000.0, tupSize=36.8, cpuCost=512254.0, blockIOs=5]
+        NestedLoops[pred:  STORES.CITY_ID == CITIES.CITY_ID] cost=[tuples=2000.0, tupSize=36.8, cpuCost=510254.0, blockIOs=5]
+            FileScan[table:  CITIES, pred:  CITIES.POPULATION > 1000000 AND CITIES.POPULATION > 1000000] cost=[tuples=254.0, tupSize=23.8, cpuCost=254.0, blockIOs=1]
+            FileScan[table:  STORES] cost=[tuples=2000.0, tupSize=13.0, cpuCost=2000.0, blockIOs=4]
+
+Estimated 2000.000000 tuples with average size 36.787399
+Estimated number of block IOs:  5
+
+
+
+*------------------------------------------------------------------------*
+C3.  EXPLAIN SELECT store_id FROM stores JOIN
+        (SELECT city_id FROM cities WHERE population > 1000000) AS big_cities 
+        ON stores.city_id = big_cities.city_id;
+
+Explain Plan:
+    Project[values:  [STORES.STORE_ID]] cost=[tuples=2000.0, tupSize=36.8, cpuCost=512508.0, blockIOs=5]
+        NestedLoops[pred:  STORES.CITY_ID == BIG_CITIES.CITY_ID] cost=[tuples=2000.0, tupSize=36.8, cpuCost=510508.0, blockIOs=5]
+            Rename[resultTableName=BIG_CITIES] cost=[tuples=254.0, tupSize=23.8, cpuCost=508.0, blockIOs=1]
+                Project[values:  [CITIES.CITY_ID]] cost=[tuples=254.0, tupSize=23.8, cpuCost=508.0, blockIOs=1]
+                    FileScan[table:  CITIES, pred:  CITIES.POPULATION > 1000000 AND CITIES.POPULATION > 1000000] cost=[tuples=254.0, tupSize=23.8, cpuCost=254.0, blockIOs=1]
+            FileScan[table:  STORES] cost=[tuples=2000.0, tupSize=13.0, cpuCost=2000.0, blockIOs=4]
+
+Estimated 2000.000000 tuples with average size 36.787399
+Estimated number of block IOs:  5
+
+
+
+*------------------------------------------------------------------------*
+C4.  EXPLAIN SELECT store_id, property_costs FROM stores, cities, states
+        WHERE stores.city_id = cities.city_id AND
+        cities.state_id = states.state_id AND
+        state_name = 'Oregon' AND property_costs > 500000;
+
+Explain Plan:
+    Project[values:  [STORES.STORE_ID, STORES.PROPERTY_COSTS]] cost=[tuples=0.2, tupSize=52.5, cpuCost=523759.3, blockIOs=6]
+        SimpleFilter[pred:  STORES.CITY_ID == CITIES.CITY_ID AND STORES.PROPERTY_COSTS > 500000 AND STATES.STATE_NAME == 'Oregon'] cost=[tuples=0.2, tupSize=52.5, cpuCost=523759.0, blockIOs=6]
+            NestedLoops[pred:  STORES.CITY_ID == CITIES.CITY_ID AND STATES.STATE_NAME == 'Oregon'] cost=[tuples=500.0, tupSize=52.5, cpuCost=523259.0, blockIOs=6]
+                NestedLoops[pred:  CITIES.STATE_ID == STATES.STATE_ID] cost=[tuples=254.0, tupSize=39.5, cpuCost=13259.0, blockIOs=2]
+                    FileScan[table:  CITIES] cost=[tuples=254.0, tupSize=23.8, cpuCost=254.0, blockIOs=1]
+                    FileScan[table:  STATES, pred:  STATES.STATE_NAME == 'Oregon' AND STATES.STATE_NAME == 'Oregon'] cost=[tuples=51.0, tupSize=15.7, cpuCost=51.0, blockIOs=1]
+                FileScan[table:  STORES, pred:  STORES.PROPERTY_COSTS > 500000 AND STORES.PROPERTY_COSTS > 500000] cost=[tuples=2000.0, tupSize=13.0, cpuCost=2000.0, blockIOs=4]
+
+Estimated 0.245817 tuples with average size 52.454067
+Estimated number of block IOs:  6
+
+
 
 E:  Extra Credit [OPTIONAL]
 ---------------------------
