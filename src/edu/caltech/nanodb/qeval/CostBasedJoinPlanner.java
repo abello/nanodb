@@ -45,7 +45,6 @@ public class CostBasedJoinPlanner implements Planner {
         this.storageManager = storageManager;
     }
 
-
     /**
      * This helper class is used to keep track of one "join component" in the
      * dynamic programming algorithm.  A join component is simply a query plan
@@ -76,6 +75,8 @@ public class CostBasedJoinPlanner implements Planner {
          * remain to be incorporated into the query.
          */
         public HashSet<Expression> conjunctsUsed;
+
+        AggregateReplacementProcessor processor = new AggregateReplacementProcessor();
 
         /**
          * Constructs a new instance for a <em>leaf node</em>.  It should not
@@ -176,23 +177,7 @@ public class CostBasedJoinPlanner implements Planner {
         return child;
     }
 
-    /**
-     * Returns a plan node for the grouping/aggregation part of the select statement.
-     *
-     * Aggregation function calls are replaced with column references by AggregateReplacementProcessor. These,
-     * in turn, are employed during evaluation.
-     *
-     * @param child The child of the resultant node.
-     * @param selClause
-     * @return The resultant node.
-     */
-    private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause) {
-
-        List<Expression> groupByExprs = selClause.getGroupByExprs();
-
-        // Replace aggregate function calls with column references.
-        AggregateReplacementProcessor processor = new AggregateReplacementProcessor();
-
+    private void traverseAggregateFunctions(SelectClause selClause, AggregateReplacementProcessor processor) {
         for (SelectValue sv : selClause.getSelectValues()) {
             if (!sv.isExpression())
                 continue;
@@ -216,6 +201,21 @@ public class CostBasedJoinPlanner implements Planner {
             processor.setErrorMessage("Aggregate functions in ON clauses are not allowed");
             selClause.getFromClause().getOnExpression().traverse(processor);
         }
+    }
+
+    /**
+     * Returns a plan node for the grouping/aggregation part of the select statement.
+     *
+     * Aggregation function calls are replaced with column references by AggregateReplacementProcessor. These,
+     * in turn, are employed during evaluation.
+     *
+     * @param child The child of the resultant node.
+     * @param selClause
+     * @return The resultant node.
+     */
+    private PlanNode planGroupingAggregation(PlanNode child, SelectClause selClause, AggregateReplacementProcessor processor) {
+
+        List<Expression> groupByExprs = selClause.getGroupByExprs();
 
         if (processor.getGroupAggregates().isEmpty() && groupByExprs.isEmpty()) {
             return child;
@@ -281,10 +281,13 @@ public class CostBasedJoinPlanner implements Planner {
         }
         PlanNode res = null;
 
+        AggregateReplacementProcessor processor = new AggregateReplacementProcessor();
+
+        traverseAggregateFunctions(selClause, processor);
         JoinComponent joinComponent = makeJoinPlan(selClause.getFromClause(), conjuncts);
         conjuncts.removeAll(joinComponent.conjunctsUsed);
 
-        res = planGroupingAggregation(joinComponent.joinPlan, selClause);
+        res = planGroupingAggregation(joinComponent.joinPlan, selClause, processor);
         logger.debug("    Result plan:  " +
                 PlanNode.printNodeTreeToString(res, true));
 
@@ -300,6 +303,7 @@ public class CostBasedJoinPlanner implements Planner {
         res = planOrderByClause(res, selClause);
         logger.debug("    Result plan:  " +
                 PlanNode.printNodeTreeToString(res, true));
+
 
         res.prepare();
         return res;
