@@ -643,6 +643,7 @@ public class CostBasedJoinPlanner implements Planner {
                         JoinComponent bestJC = nextJoinPlans.get(unionLeafSet);
                         float bestCost = nextJoinPlans.get(unionLeafSet).joinPlan.getCost().cpuCost;
                         if (newCost < bestCost) {
+                            logger.debug(String.format("Found better cost: newCost %f, bestCost %f", newCost, bestCost));
                             HashSet<Expression> newConjuncts = new HashSet<Expression>(bestJC.conjunctsUsed);
                             newConjuncts.add(expr);
                             JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
