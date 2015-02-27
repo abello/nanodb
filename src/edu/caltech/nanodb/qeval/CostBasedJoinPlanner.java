@@ -10,16 +10,28 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import edu.caltech.nanodb.commands.SelectValue;
-import edu.caltech.nanodb.expressions.*;
-import edu.caltech.nanodb.plans.*;
-
-import edu.caltech.nanodb.relations.ColumnInfo;
-import org.antlr.stringtemplate.language.Expr;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
+import edu.caltech.nanodb.commands.SelectValue;
+import edu.caltech.nanodb.expressions.AggregateReplacementProcessor;
+import edu.caltech.nanodb.expressions.BooleanOperator;
+import edu.caltech.nanodb.expressions.ColumnValue;
+import edu.caltech.nanodb.expressions.Expression;
+import edu.caltech.nanodb.expressions.OrderByExpression;
+import edu.caltech.nanodb.expressions.PredicateUtils;
+import edu.caltech.nanodb.plans.FileScanNode;
+import edu.caltech.nanodb.plans.HashedGroupAggregateNode;
+import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
+import edu.caltech.nanodb.plans.PlanNode;
+import edu.caltech.nanodb.plans.PlanUtils;
+import edu.caltech.nanodb.plans.ProjectNode;
+import edu.caltech.nanodb.plans.RenameNode;
+import edu.caltech.nanodb.plans.SelectNode;
+import edu.caltech.nanodb.plans.SimpleFilterNode;
+import edu.caltech.nanodb.plans.SortNode;
+import edu.caltech.nanodb.relations.ColumnInfo;
 import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.TableInfo;
@@ -380,7 +392,9 @@ public class CostBasedJoinPlanner implements Planner {
      * This helper method pulls the essential details for join optimization
      * out of a <tt>FROM</tt> clause.
      *
-     * TODO:  FILL IN DETAILS.
+     * If the fromClause is a leaf, add it to leafFromClauses. Otherwise it is 
+     * a join expression -- extract the prepared join expression, then 
+     * recursively call collectDetails on left and right fromClauses.
      *
      * @param fromClause the from-clause to collect details from
      *
@@ -459,7 +473,22 @@ public class CostBasedJoinPlanner implements Planner {
 
     /**
      * Constructs a plan tree for evaluating the specified from-clause.
-     * TODO:  COMPLETE THE DOCUMENTATION
+     * The function handles plan construction for the three types of leaf 
+     * nodes -- base tables, select subqueries, and outer joins. For base 
+     * tables, we find applicable conjuncts and pass them to makeSimpleSelect().
+     * 
+     * For select subqueries, we recursively call the makePlan function with 
+     * the subquery.
+     * 
+     * For outer joins, we find the schema of the left or right clause 
+     * depending on whether the join is left or right outer join, respectively.
+     * We find the conjuncts that apply to this schema then pass these to
+     * the recursive calls of makeJoinPlan for the left and right clauses. We
+     * then apply a NestedLoopsJoinNode to combine the JoinComponents returned
+     * for the left and right clauses to perform the correct outer join.
+     * 
+     * For base tables and select subqueries, we apply a rename node if 
+     * necessary. Finally, apply any remaining conjuncts to the plan node.
      *
      * @param fromClause the select nodes that need to be joined.
      *
