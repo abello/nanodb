@@ -653,9 +653,6 @@ public class CostBasedJoinPlanner implements Planner {
             HashMap<HashSet<PlanNode>, JoinComponent> nextJoinPlans =
                 new HashMap<HashSet<PlanNode>, JoinComponent>();
 
-            // TODO:  IMPLEMENT THE CODE THAT GENERATES OPTIMAL PLANS THAT
-            //        JOIN N + 1 LEAVES
-
             for (HashSet<PlanNode> leafSet : joinPlans.keySet()) {
                 JoinComponent jc = joinPlans.get(leafSet);
                 for (JoinComponent leaf : leafComponents) {
