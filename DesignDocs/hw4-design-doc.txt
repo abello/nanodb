@@ -30,9 +30,17 @@ B:  Generating Optimal Joins
 ----------------------------
 
 B1.  Briefly describe how you generate an "optimal" access to a base table.
+     
+     We create a FileScanNode and pass whichever conjuncts are applicable to
+     the base table.
 
 B2.  Briefly describe how you decide when it is acceptable to push
      conjuncts down through an outer join.
+
+     If the outer join is a left outer join, the conjuncts applicable to
+     the left fromClause are pushed down to the construction of the left
+     fromClause's plan node. The same is true for right outer joins. This
+     is based on the equivalence rule described in the assignment.
 
 B3.  The planner in this assignment is still somewhat limited; for example,
      we can't push conjuncts down into subqueries.  Using the stores schema,
@@ -40,16 +48,45 @@ B3.  The planner in this assignment is still somewhat limited; for example,
      beneficial to push a conjunct down into the subquery.  (Your planner
      obviously doesn't need to perform this optimization.)
 
+     SELECT * FROM (SELECT * FROM cities,stores) t WHERE 
+        t.city_name = 'New York';
+
+     In this case, pushing the conjunct inside the inner cross join would
+     obviously improve performance.
+
 B4.  Enumerate the situations where you call prepare() on plans being
      generated.  Since this operation is somewhat expensive, do you
      see any ways to reduce the number of times you call prepare() in
      your implementation?
+
+     - After adding conjuncts to the where expression in makeLeafPlan
+     using PlanUtils.addPredicate().
+     - Before calling getSchema() on a node to prepare its schema.
+     - fromClause is prepared in makePlan() before node construction to
+     support calls to fromClause.getPreparedSchema() during plan node
+     construction.
+     - After construction of the plan node before returning in makePlan().
+     - In generateOptimalJoin() to compute the cpu cost.
+
+     To reduce the number of calls, only call when: computing something
+     about the plan (CPU cost, schema, etc), or when modifying the 
+     schema of the plan.
 
 B5.  In what situations can you end up with unused conjuncts after
      planning joins.  Illustrate by giving an example SQL statement
      that would have unused conjuncts after join planning, again using
      the stores schema.  Then, describe a strategy for where/how these
      left-over conjuncts should be applied in the plan.
+
+     SELECT state_id, AVG(population) AS avg_pop FROM cities 
+        GROUP BY state_id HAVING avg_pop > 1000000;
+
+     In this example, the conjunct "avg_pop > 1000000" refers to a 
+     column name (avg_pop) that does not exist while leaf nodes are
+     being joined together, but is constructed after grouping and
+     aggregation is handled. We can apply these leftover conjuncts
+     after grouping and aggregation by adding a simple filter node
+     passing the conjuncts as an expression.
 
 C:  Costing SQL Queries
 -----------------------
