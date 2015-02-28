@@ -679,23 +679,20 @@ public class CostBasedJoinPlanner implements Planner {
                     float newCost = newPlan.getCost().cpuCost;
 
                     HashSet<PlanNode> unionLeafSet = new HashSet<PlanNode>(leafSet);
+                    HashSet<Expression> newConjuncts = new HashSet<Expression>(subplanConjuncts);
+                    newConjuncts.addAll(exprs);
                     unionLeafSet.add(leaf.joinPlan);
                     if (nextJoinPlans.containsKey(unionLeafSet)) {
                         JoinComponent bestJC = nextJoinPlans.get(unionLeafSet);
                         float bestCost = nextJoinPlans.get(unionLeafSet).joinPlan.getCost().cpuCost;
                         if (newCost < bestCost) {
                             logger.debug(String.format("Found better cost: newCost %f, bestCost %f", newCost, bestCost));
-                            HashSet<Expression> newConjuncts = new HashSet<Expression>(bestJC.conjunctsUsed);
                             newConjuncts.addAll(exprs);
                             JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
                             newJC.leavesUsed = unionLeafSet;
                             nextJoinPlans.put(unionLeafSet, newJC);
                         }
                     } else {
-                        HashSet<Expression> newConjuncts = new HashSet<Expression>(jc.conjunctsUsed);
-                        if (expr != null) {
-                            newConjuncts.addAll(exprs);
-                        }
                         JoinComponent newJC = new JoinComponent(newPlan, newConjuncts);
                         newJC.leavesUsed = unionLeafSet;
                         nextJoinPlans.put(unionLeafSet, newJC);
