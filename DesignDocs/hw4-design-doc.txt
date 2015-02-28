@@ -26,6 +26,14 @@ A3.  Specify any late tokens you are applying to this assignment, or
 
 A4.  Briefly describe what parts of the assignment each teammate focused on.
 
+    A lot of the work was done by sitting and coding together. That said, we focused
+    on some specific things.
+
+    Ronnel implemented the collectDetails and makeLeafPlan functions. In other 
+    words collection of conjunctions and leaf nodes and preparation of leaf plan nodes.
+    Ryan implemented optimal join planning and makePlan
+    Bello implemented trivial projections for inner joins and some debugging/testing.
+
 B:  Generating Optimal Joins
 ----------------------------
 
