@@ -450,14 +450,40 @@ public class TransactionManager implements BufferManagerObserver {
      *         going to be broken.
      */
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
-        // TODO:  IMPLEMENT
-        //
+        // TODO: Check this method!
+        // TODO: Write comments on why it's atomic/durable
         // Note that the "next LSN" value must be determined from both the
         // current LSN *and* its record size; otherwise we lose the last log
         // record in the WAL file.  You can use this static method:
         //
         // int lastPosition = lsn.getFileOffset() + lsn.getRecordSize();
         // WALManager.computeNextLSN(lsn.getLogFileNo(), lastPosition);
+
+        LogSequenceNumber firstLSN = walManager.getFirstLSN();
+        LogSequenceNumber nextLSN = firstLSN;
+
+        // while nextLSN is smaller than lsn
+        // Note that this also takes care of the NO-OP case: as the nextLSN starts at firstLSN, if firstLSN
+        // is less than lsn, it won't ever enter this loop
+        while (nextLSN.compareTo(lsn) > 0) {
+            DBFile dbFile = walManager.openWALFile(nextLSN.getLogFileNo());
+
+            // Calculate the page number from the file offset and the WAL page size
+            int pageNo = nextLSN.getFileOffset() / dbFile.getPageSize();
+            DBPage dbPage = storageManager.loadDBPage(dbFile, pageNo);
+
+            // TODO: Do something with this, only proceed if this is open
+            storageManager.getBufferManager().getFile(dbFile.getDataFile().getName());
+
+            // This function takes care of checking whether the page needs to be flushed to disk or not
+            recordPageUpdate(dbPage);
+
+            int lastPosition = nextLSN.getFileOffset() + nextLSN.getRecordSize();
+            nextLSN = WALManager.computeNextLSN(lsn.getLogFileNo(), lastPosition);
+        }
+
+        // Persist txnstate.dat
+        storeTxnStateToFile();
     }
 
 
