@@ -16,8 +16,8 @@ A2.  Specify the tag name and commit-hash of the Git version you are
      submitting for your assignment.  (You can list the commit hashes
      of your repository tags with this command:  git show-ref --tags)
 
-     Tag name: hw4
-     Commit hash: 6051a2f6a3013d
+     Tag name: hw4-2
+     Commit hash: 6d96d57b0
 
 A3.  Specify any late tokens you are applying to this assignment, or
      "none" if no late tokens.
