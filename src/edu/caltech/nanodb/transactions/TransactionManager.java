@@ -452,6 +452,7 @@ public class TransactionManager implements BufferManagerObserver {
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
         // TODO: Check this method!
         // TODO: Write comments on why it's atomic/durable
+
         // Note that the "next LSN" value must be determined from both the
         // current LSN *and* its record size; otherwise we lose the last log
         // record in the WAL file.  You can use this static method:
@@ -459,7 +460,7 @@ public class TransactionManager implements BufferManagerObserver {
         // int lastPosition = lsn.getFileOffset() + lsn.getRecordSize();
         // WALManager.computeNextLSN(lsn.getLogFileNo(), lastPosition);
 
-        LogSequenceNumber firstLSN = walManager.getFirstLSN();
+        LogSequenceNumber firstLSN = txnStateNextLSN;
         LogSequenceNumber nextLSN = firstLSN;
 
         // while nextLSN is smaller than lsn
