@@ -1045,6 +1045,7 @@ public class WALManager {
 
         // Scan backward through the log records for this transaction to roll
         // it back.
+        LogSequenceNumber prevLSN;
         
         while (true) {
             DBFileReader walReader = getWALFileReader(lsn);
@@ -1061,19 +1062,54 @@ public class WALManager {
                 "Undoing WAL record at %s.  Type = %s, TxnID = %d",
                 lsn, type, transactionID));
 
-            // TODO:  IMPLEMENT THE REST
-            //
-            //        Use logging statements liberally to help verify and
-            //        debug your work.
-            //
-            //        If you encounter invalid WAL contents, throw a
-            //        WALFileException to indicate the problem immediately.
-            //
-            // TODO:  SET lsn TO PREVIOUS LSN TO WALK BACKWARD THROUGH WAL.
+            if (type == WALRecordType.START_TXN) {
+                // If we've reached the start of the transaction, we're done with the rollback
+                logger.debug("Reached START_TXN, stopping rollback");
+                break;
+            }
+            else if (type == WALRecordType.UPDATE_PAGE) {
 
-            // TODO:  This break is just here so the code will compile; when
-            //        you provide your own implementation, get rid of it!
-            break;
+                // TODO: Add extensive debug logging
+
+                // If this is an UPDATE_PAGE record, undo this update
+
+                // the upcoming 6 bytes have to do with the LSN. The first 2 are the lsn number (range 0..65535)
+                // the next 4 bytes is the file offset (signed int)
+                int logFileNo = walReader.readUnsignedShort();
+                int fileOffset = walReader.readInt();
+                prevLSN = new LogSequenceNumber(logFileNo, fileOffset);
+
+                // Read the string filename
+                String fname = walReader.readVarString255();
+
+                // Read the page number of the modified page (unsigned short)
+                int pageNo = walReader.readUnsignedShort();
+
+                DBFile dbFile = storageManager.openDBFile(fname);
+                DBPage dbPage = storageManager.loadDBPage(dbFile, pageNo);
+
+                // Read the number of segments (unsigned short)
+                int numSegments = walReader.readUnsignedShort();
+
+                // Get changes using helper function. Note that the helper function needs  the walReader
+                // to be positioned at the start of the redo/undo data, and it will move it past this part
+                byte[] changes = applyUndoAndGenRedoOnlyData(walReader, dbPage, numSegments);
+
+                writeRedoOnlyUpdatePageRecord(dbPage, numSegments, changes);
+            }
+            else {
+                // Any other type (commit, abort, update-redo-only) shouldn't be encountered
+                // here. Throw an exception cause something is seriously wrong
+                throw new WALFileException(String.format("Unexpected type %s during rollback", type.toString()));
+            }
+
+            if (prevLSN == null) {
+                // This should never happen, throw exception just in case
+                throw new RuntimeException("prevLSn is null!");
+            }
+            // Set lsn to previous lsn to walk backward
+            lsn = prevLSN;
+
         }
 
         // All done rolling back the transaction!  Record that it was aborted
