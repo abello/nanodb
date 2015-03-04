@@ -3,6 +3,8 @@ package edu.caltech.nanodb.transactions;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -29,6 +31,7 @@ import edu.caltech.nanodb.storage.writeahead.LogSequenceNumber;
 import edu.caltech.nanodb.storage.writeahead.RecoveryInfo;
 import edu.caltech.nanodb.storage.writeahead.WALManager;
 import edu.caltech.nanodb.storage.writeahead.WALRecordType;
+import sun.rmi.runtime.Log;
 
 
 /**
@@ -434,6 +437,9 @@ public class TransactionManager implements BufferManagerObserver {
 
         logger.debug(String.format("Called beforeWriteDirtyPages() with %d pages", pages.size()));
 
+        LogSequenceNumber largestLSN;
+        LinkedList<LogSequenceNumber> lsns = new LinkedList<LogSequenceNumber>();
+
         for (DBPage page: pages) {
             // Ignore pages that have a null LSN
             // Moreover, ignore WRITE_AHEAD_LOG_FILE or TXNSTATE_FILE, as these types of
@@ -444,12 +450,21 @@ public class TransactionManager implements BufferManagerObserver {
                 continue;
             }
 
-            // TODO: This is probably wrong, seems too easy.
-            // Can't immediately see why though :/
-            // Maybe we just need to find the largest LSN of these pages, and just call
-            // forceWAL once on that LSN?
-            forceWAL(page.getPageLSN());
+            // Collect all LSNs we have seen into lsns
+            lsns.add(page.getPageLSN());
         }
+
+        largestLSN = lsns.get(0);
+
+        // calculate largest LSN
+        for (LogSequenceNumber lsn : lsns) {
+            if (lsn.compareTo(largestLSN) > 0) {
+                largestLSN = lsn;
+            }
+        }
+
+        // forceWAL of the largest LSN of all pages
+        forceWAL(largestLSN);
         logger.debug(String.format("Finished beforeWriteDirtyPages()"));
     }
 
