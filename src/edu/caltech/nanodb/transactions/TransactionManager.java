@@ -485,7 +485,7 @@ public class TransactionManager implements BufferManagerObserver {
         // Note that this also takes care of the NO-OP case: as the nextLSN starts at firstLSN, if firstLSN
         // is less than lsn, it won't ever enter this loop
         while (nextLSN.compareTo(lsn) <= 0) {
-            logger.debug(nextLSN.toString());
+            logger.debug(String.format("NextLSN: %s", nextLSN.toString()));
             DBFile dbFile = walManager.openWALFile(nextLSN.getLogFileNo());
 
             // Calculate the page number from the file offset and the WAL page size
@@ -499,6 +499,7 @@ public class TransactionManager implements BufferManagerObserver {
             recordPageUpdate(dbPage);
 
             int lastPosition = nextLSN.getFileOffset() + nextLSN.getRecordSize();
+            logger.debug(String.format("fileOffset: %d, recordSize: %d", nextLSN.getFileOffset(), nextLSN.getRecordSize()));
             nextLSN = WALManager.computeNextLSN(nextLSN.getLogFileNo(), lastPosition);
         }
         
