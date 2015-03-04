@@ -347,6 +347,8 @@ public class HeapTupleFile implements TupleFile {
         }
         DataPage.sanityCheck(dbPage);
         
+        storageManager.logDBPageWrite(dbPage);
+        
         prevPage.unpin();
         dbPage.unpin();
 
@@ -391,6 +393,8 @@ public class HeapTupleFile implements TupleFile {
         if (!free && DataPage.isFree(dbPage, schema)) {
             addToFreeList(dbPage);
         }
+        
+        storageManager.logDBPageWrite(dbPage);
         
         DataPage.sanityCheck(dbPage);
     }
@@ -441,7 +445,9 @@ public class HeapTupleFile implements TupleFile {
                     "Page wasn't free, but it's free after deletion"));
             addToFreeList(dbPage);
         }
-
+        
+        storageManager.logDBPageWrite(dbPage);
+        
         DataPage.sanityCheck(dbPage);
     }
 
