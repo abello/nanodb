@@ -446,6 +446,8 @@ public class TransactionManager implements BufferManagerObserver {
 
             // TODO: This is probably wrong, seems too easy.
             // Can't immediately see why though :/
+            // Maybe we just need to find the largest LSN of these pages, and just call
+            // forceWAL once on that LSN?
             forceWAL(page.getPageLSN());
         }
         logger.debug(String.format("Finished beforeWriteDirtyPages()"));
