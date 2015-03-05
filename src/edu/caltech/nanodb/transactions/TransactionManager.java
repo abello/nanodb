@@ -491,7 +491,13 @@ public class TransactionManager implements BufferManagerObserver {
     	BufferManager bufferManager = storageManager.getBufferManager();
     	
     	for (int logNo = startLogNo; logNo <= endLogNo; logNo++) {
-    		DBFile walFile = walManager.openWALFile(logNo);
+    		DBFile walFile;
+    		try {
+    			walFile = walManager.openWALFile(logNo);
+    		}
+    		catch (IOException e) {
+    			continue;
+    		}
     		int startPage = 0;
     		int endPage = Integer.MAX_VALUE;
     		if (logNo == startLogNo) 
