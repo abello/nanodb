@@ -459,8 +459,8 @@ public class TransactionManager implements BufferManagerObserver {
 
             // forceWAL of the largest LSN of all pages
             forceWAL(largestLSN);
-            logger.debug(String.format("Finished beforeWriteDirtyPages()"));
         }
+        logger.debug(String.format("Finished beforeWriteDirtyPages()"));
     }
 
 
