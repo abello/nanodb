@@ -491,29 +491,34 @@ public class TransactionManager implements BufferManagerObserver {
         LogSequenceNumber firstLSN = txnStateNextLSN;
         LogSequenceNumber nextLSN = firstLSN;
 
+        boolean isOpened;
         // while nextLSN is smaller than lsn
         // Note that this also takes care of the NO-OP case: as the nextLSN starts at firstLSN, if firstLSN
         // is less than lsn, it won't ever enter this loop
         while (nextLSN.compareTo(lsn) <= 0) {
             logger.debug(String.format("NextLSN: %s", nextLSN.toString()));
-            DBFile dbFile = walManager.openWALFile(nextLSN.getLogFileNo());
-
-            // Calculate the page number from the file offset and the WAL page size
-            int pageNo = nextLSN.getFileOffset() / dbFile.getPageSize();
-            DBPage dbPage = storageManager.loadDBPage(dbFile, pageNo);
-
-            // TODO: Do something with this, only proceed if this is open
-            storageManager.getBufferManager().getFile(dbFile.getDataFile().getName());
-
-            // This function takes care of checking whether the page needs to be flushed to disk or not
-            recordPageUpdate(dbPage);
+            
+            BufferManager bufferManager = storageManager.getBufferManager();
+            String walFileName = WALManager.getWALFileName(nextLSN.getLogFileNo());
+            DBFile walFile = bufferManager.getFile(walFileName);
+            isOpened = walFile != null;
+            
+            walFile = walManager.openWALFile(nextLSN.getLogFileNo());
+        	int pageNo = nextLSN.getFileOffset() / walFile.getPageSize();
+        	
+            // File is open
+            if (isOpened) 
+            	// Write the WAL file out of buffer and also sync it to disk
+            	bufferManager.writeDBFile(walFile, pageNo, pageNo, true);
+            else 
+            	bufferManager.writeDBFile(walFile, pageNo, pageNo, false);
 
             int lastPosition = nextLSN.getFileOffset() + nextLSN.getRecordSize();
             logger.debug(String.format("fileOffset: %d, recordSize: %d", nextLSN.getFileOffset(), nextLSN.getRecordSize()));
             nextLSN = WALManager.computeNextLSN(nextLSN.getLogFileNo(), lastPosition);
         }
         
-        txnStateNextLSN = lsn;
+        txnStateNextLSN = nextLSN;
 
         // Persist txnstate.dat
         storeTxnStateToFile();
