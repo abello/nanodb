@@ -447,18 +447,20 @@ public class TransactionManager implements BufferManagerObserver {
             lsns.add(page.getPageLSN());
         }
 
-        largestLSN = lsns.get(0);
+        if (lsns.size() > 0) {
+            largestLSN = lsns.get(0);
 
-        // calculate largest LSN
-        for (LogSequenceNumber lsn : lsns) {
-            if (lsn.compareTo(largestLSN) > 0) {
-                largestLSN = lsn;
+            // calculate largest LSN
+            for (LogSequenceNumber lsn : lsns) {
+                if (lsn.compareTo(largestLSN) > 0) {
+                    largestLSN = lsn;
+                }
             }
-        }
 
-        // forceWAL of the largest LSN of all pages
-        forceWAL(largestLSN);
-        logger.debug(String.format("Finished beforeWriteDirtyPages()"));
+            // forceWAL of the largest LSN of all pages
+            forceWAL(largestLSN);
+            logger.debug(String.format("Finished beforeWriteDirtyPages()"));
+        }
     }
 
 
