@@ -3,36 +3,29 @@ package edu.caltech.nanodb.transactions;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 
+import edu.caltech.nanodb.client.SessionState;
 import edu.caltech.nanodb.expressions.TypeCastException;
+import edu.caltech.nanodb.server.EventDispatcher;
 import edu.caltech.nanodb.server.properties.PropertyHandler;
 import edu.caltech.nanodb.server.properties.PropertyRegistry;
 import edu.caltech.nanodb.server.properties.ReadOnlyPropertyException;
 import edu.caltech.nanodb.server.properties.UnrecognizedPropertyException;
-
-import edu.caltech.nanodb.client.SessionState;
-
-import edu.caltech.nanodb.server.EventDispatcher;
-
 import edu.caltech.nanodb.storage.BufferManager;
 import edu.caltech.nanodb.storage.BufferManagerObserver;
 import edu.caltech.nanodb.storage.DBFile;
 import edu.caltech.nanodb.storage.DBFileType;
 import edu.caltech.nanodb.storage.DBPage;
 import edu.caltech.nanodb.storage.StorageManager;
-
 import edu.caltech.nanodb.storage.writeahead.LogSequenceNumber;
 import edu.caltech.nanodb.storage.writeahead.RecoveryInfo;
 import edu.caltech.nanodb.storage.writeahead.WALManager;
 import edu.caltech.nanodb.storage.writeahead.WALRecordType;
-import sun.rmi.runtime.Log;
-
 
 /**
  */
