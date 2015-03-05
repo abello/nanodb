@@ -479,48 +479,31 @@ public class TransactionManager implements BufferManagerObserver {
      *         going to be broken.
      */
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
-        // TODO: Check this method!
-        // TODO: Write comments on why it's atomic/durable
+        // TODO: Check this method! Write comments on why it's atomic/durable
 
-        // Note that the "next LSN" value must be determined from both the
-        // current LSN *and* its record size; otherwise we lose the last log
-        // record in the WAL file.  You can use this static method:
-        //
-        // int lastPosition = lsn.getFileOffset() + lsn.getRecordSize();
-        // WALManager.computeNextLSN(lsn.getLogFileNo(), lastPosition);
-        logger.debug(String.format("Entered forceWAL(%s)", lsn.toString()));
-
-        LogSequenceNumber firstLSN = txnStateNextLSN;
-        LogSequenceNumber nextLSN = firstLSN;
-
-        boolean isOpened;
-        // while nextLSN is smaller than lsn
-        // Note that this also takes care of the NO-OP case: as the nextLSN starts at firstLSN, if firstLSN
-        // is less than lsn, it won't ever enter this loop
-        while (nextLSN.compareTo(lsn) <= 0) {
-            logger.debug(String.format("NextLSN: %s", nextLSN.toString()));
-            
-            BufferManager bufferManager = storageManager.getBufferManager();
-            String walFileName = WALManager.getWALFileName(nextLSN.getLogFileNo());
-            DBFile walFile = bufferManager.getFile(walFileName);
-            isOpened = walFile != null;
-            
-            walFile = walManager.openWALFile(nextLSN.getLogFileNo());
-        	int pageNo = nextLSN.getFileOffset() / walFile.getPageSize();
-        	
-            // File is open
-            if (isOpened) 
-            	// Write the WAL file out of buffer and also sync it to disk
-            	bufferManager.writeDBFile(walFile, pageNo, pageNo, true);
-            else 
-            	bufferManager.writeDBFile(walFile, pageNo, pageNo, false);
-
-            int lastPosition = nextLSN.getFileOffset() + nextLSN.getRecordSize();
-            logger.debug(String.format("fileOffset: %d, recordSize: %d", nextLSN.getFileOffset(), nextLSN.getRecordSize()));
-            nextLSN = WALManager.computeNextLSN(nextLSN.getLogFileNo(), lastPosition);
-        }
-        
-        txnStateNextLSN = nextLSN;
+    	loadTxnStateFile();
+    	
+    	logger.debug(String.format("Entered forceWAL(%s)", lsn.toString()));
+    	
+    	int startLogNo = txnStateNextLSN.getLogFileNo();
+    	int endLogNo = lsn.getLogFileNo();
+    	
+    	BufferManager bufferManager = storageManager.getBufferManager();
+    	
+    	for (int logNo = startLogNo; logNo <= endLogNo; logNo++) {
+    		DBFile walFile = walManager.openWALFile(logNo);
+    		int startPage = 0;
+    		int endPage = Integer.MAX_VALUE;
+    		if (logNo == startLogNo) 
+    			startPage = txnStateNextLSN.getFileOffset() / walFile.getPageSize();
+    		if (logNo == endLogNo)
+    			endPage = lsn.getFileOffset() / walFile.getPageSize();
+    		
+    		bufferManager.writeDBFile(walFile, startPage, endPage, true);
+    	}
+    	
+    	int nextLSNPosition = lsn.getFileOffset() + lsn.getRecordSize();
+    	txnStateNextLSN = WALManager.computeNextLSN(lsn.getLogFileNo(), nextLSNPosition);
 
         // Persist txnstate.dat
         storeTxnStateToFile();
