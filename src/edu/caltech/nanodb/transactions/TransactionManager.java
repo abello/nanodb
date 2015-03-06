@@ -480,7 +480,19 @@ public class TransactionManager implements BufferManagerObserver {
      */
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
         // TODO: Check this method! Write comments on why it's atomic/durable
-    	//System.out.println(Thread.currentThread().getStackTrace());
+    	
+    	/* The function provides durability because once the function completes,
+    	 * it ensures that the WAL records are written to disk, and therefore 
+    	 * will remain so (up to at least this lsn), even in the event of some
+    	 * crash afterwards.
+    	 * 
+    	 * The function is also atomic -- if the database crashes before 
+    	 * we store changes to txnstate.dat, upon starting the database again, 
+    	 * in the recovery step we will use the previously stored nextLSN 
+    	 * value. This means the changes to the WAL written out of the buffer
+    	 * in this function will not be used -- i.e. as if the function was not
+    	 * called at all.
+    	 */
 
     	loadTxnStateFile();
     	
