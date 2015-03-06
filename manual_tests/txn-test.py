@@ -1,5 +1,6 @@
 # looked up most of this stuff from SO
 from subprocess import Popen, PIPE, call
+import shutil
 
 proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
 
@@ -21,7 +22,8 @@ FLUSH = "FLUSH;\n"
 CRASH = "CRASH;\n"
 
 def delete_files():
-    call(["rm", "../datafiles/*.log", "../datafiles/*.dat", "../datafiles/*.tbl"])
+    folder = '/home/ronnel/work/nanodb/datafiles/'
+    shutil.rmtree(folder)
 
 def sql_exec(proc, sql):
     ''' Executes a sql statement in the database instance '''
@@ -33,7 +35,7 @@ def print_guide(sql):
     print  '\033[92m' + sql + '\033[0m'
 
 
-# delete_files()
+delete_files()
 sql_exec(proc, CREATE_TBL)
 sql_exec(proc, INS_1)
 sql_exec(proc, INS_2)
