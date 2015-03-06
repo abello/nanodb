@@ -2,7 +2,12 @@
 from subprocess import Popen, PIPE, call
 import shutil
 
+def delete_files():
+    folder = './datafiles/'
+    shutil.rmtree(folder)
 
+
+delete_files()
 # Basic SQL statements
 CREATE_TBL = "CREATE TABLE testwal (a INTEGER, b VARCHAR(30), c FLOAT);\n"
 INS_1 = "INSERT INTO testwal VALUES (1, 'abc', 1.2);\n"
@@ -18,9 +23,6 @@ COMMIT = "COMMIT;\n"
 FLUSH = "FLUSH;\n"
 CRASH = "CRASH;\n"
 
-def delete_files():
-    folder = './datafiles/'
-    shutil.rmtree(folder)
 
 ROLLBACK = "ROLLBACK;\n"
 
@@ -63,8 +65,7 @@ print_guide("Should list all three records")
 
 
 
-# delete_files
-
+delete_files()
 proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
 sql_exec(proc, CREATE_TBL)
 sql_exec(proc, INS_1)
