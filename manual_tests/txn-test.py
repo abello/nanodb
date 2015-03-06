@@ -3,8 +3,12 @@ from subprocess import Popen, PIPE, call
 import shutil
 
 def delete_files():
-    folder = './datafiles/'
-    shutil.rmtree(folder)
+    ''' Delete the datafiles '''
+    try:
+        folder = './datafiles/'
+        shutil.rmtree(folder)
+    except Exception, e:
+        pass
 
 
 delete_files()
