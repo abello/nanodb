@@ -23,14 +23,28 @@ CRASH = "CRASH;\n"
 def delete_files():
     call(["rm", "../datafiles/*.log", "../datafiles/*.dat", "../datafiles/*.tbl"])
 
+def sql_exec(proc, sql):
+    ''' Executes a sql statement in the database instance '''
+    print "Executing: " + sql
+    return proc.stdin.write(sql)
 
-delete_files()
-stdout = proc.stdin.write(CREATE_TBL)
-stdout = proc.stdin.write(INS_1)
-stdout = proc.stdin.write(INS_2)
+def print_guide(sql):
+    ''' Prints a testing guide, such as "should have returned X" '''
+    print sql
 
-stdout = proc.stdin.write(SELECT)
 
-print proc.communicate()[0]
+# delete_files()
+sql_exec(proc, CREATE_TBL)
+sql_exec(proc, INS_1)
+sql_exec(proc, INS_2)
+
+sql_exec(proc, SELECT)
+
+print_guide("Should list both records")
+sql_exec(proc, COMMIT)
+print_guide("Should list both records")
+# print proc.communicate()[0]
+# proc.stdout.readlines()
+
 
 
