@@ -17,7 +17,7 @@ A2.  Specify the tag name and commit-hash of the Git version you are
      of your repository tags with this command:  git show-ref --tags)
 
      Tag name:     <tag>
-     Commit hash:  <hash>
+     Commit hash:  hw6
 
 A3.  Specify any late tokens you are applying to this assignment, or
      "none" if no late tokens.
@@ -41,6 +41,14 @@ B:  Extra Credit [OPTIONAL]
 If you implemented any extra-credit tasks for this assignment, describe
 them here.  The description should be like this, with stuff in "<>" replaced.
 (The value i starts at 1 and increments...)
+
+B1: Semi-automatic tests
+In manual-tests/txn-test.py, we include a semi-automated version of the
+tests provided in schema/writeahead. These will delete files/create tables/
+run sql but won't be able to automatically verify the SQL. However, they should
+provide a slightly nicer UI for testing transactions.
+
+We were planning on doing something fancier but didn't have enough time.
 
 B<i>:  <one-line description>
 
