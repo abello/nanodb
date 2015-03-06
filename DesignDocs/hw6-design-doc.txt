@@ -6,11 +6,11 @@ A:  Logistics
 
 A1.  List your team name and the people who worked on this assignment.
 
-     <team name>
+     bbb
 
-     <name>
-     <name>
-     ...
+     Ryan Batterman
+     Aleksander Bello
+     Ronnel Boettcher
 
 A2.  Specify the tag name and commit-hash of the Git version you are
      submitting for your assignment.  (You can list the commit hashes
@@ -22,7 +22,16 @@ A2.  Specify the tag name and commit-hash of the Git version you are
 A3.  Specify any late tokens you are applying to this assignment, or
      "none" if no late tokens.
 
+     none
+
 A4.  Briefly describe what parts of the assignment each teammate focused on.
+
+     Aleksander Bello worked on beforeWriteDirtyPages, forceWAL, rollbacks,
+     as well as redo and undo processing.
+     Ryan Batterman was too busy this week (work in other classes piled up),
+     so his teammates agreed to pick up his portion of work.
+     Ronnel Boettcher worked on forceWAL, debugging, as well as implementing
+     performRedo and performUndo functions.
 
 
 B:  Extra Credit [OPTIONAL]
