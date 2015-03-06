@@ -93,11 +93,43 @@ print_guide("Should list appropriate three records")
 proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
 sql_exec(proc, SELECT)
 
+# 2B
 
+delete_files()
+proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
 
+sql_exec(proc, CREATE_TBL)
+sql_exec(proc, BEGIN)
+sql_exec(proc, "INSERT INTO testwal VALUES (1, 'abc', 1.2);")
+sql_exec(proc, "INSERT INTO testwal VALUES (2, 'defghi', -3.6);")
+print_guide("Should list both records")
+sql_exec(proc, SELECT)
+sql_exec(proc, COMMIT)
+sql_exec(proc, SELECT)
+print_guide("Should list both records")
 
+sql_exec(proc, BEGIN)
+sql_exec(proc, "INSERT INTO testwal VALUES (-1, 'zxywvu', 78.2);")
+sql_exec(proc, SELECT)
+print_guide("Should list all three records")
+sql_exec(proc, ROLLBACK)
+sql_exec(proc, SELECT)
+print_guide("Should list only original two records")
+sql_exec(proc, FLUSH)
+sql_exec(proc, CRASH)
 
+print_guide("Restarting nanodb...")
+proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
+sql_exec(proc, SELECT)
+print_guide("Should list only original two records")
+sql_exec(proc, "INSERT INTO testwal VALUES (4, 'hmm hmm', 261.32);")
+sql_exec(proc, SELECT)
+print_guide("Should list appropriate three records")
+sql_exec(proc, FLUSH)
+sql_exec(proc, CRASH)
 
+proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
+sql_exec(proc, SELECT)
+print_guide("Should list appropriate three records")
 
-
-
+delete_files()
