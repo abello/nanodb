@@ -1,0 +1,62 @@
+CS122 Assignment 6 - Write-Ahead Logging - Design Document
+=============================================================
+
+A:  Logistics
+-------------
+
+A1.  List your team name and the people who worked on this assignment.
+
+     <team name>
+
+     <name>
+     <name>
+     ...
+
+A2.  Specify the tag name and commit-hash of the Git version you are
+     submitting for your assignment.  (You can list the commit hashes
+     of your repository tags with this command:  git show-ref --tags)
+
+     Tag name:     <tag>
+     Commit hash:  <hash>
+
+A3.  Specify any late tokens you are applying to this assignment, or
+     "none" if no late tokens.
+
+A4.  Briefly describe what parts of the assignment each teammate focused on.
+
+
+B:  Extra Credit [OPTIONAL]
+---------------------------
+
+If you implemented any extra-credit tasks for this assignment, describe
+them here.  The description should be like this, with stuff in "<>" replaced.
+(The value i starts at 1 and increments...)
+
+B<i>:  <one-line description>
+
+     <brief summary of what you did, including the specific classes that
+     we should look at for your implementation>
+
+     <brief summary of test-cases that demonstrate/exercise your extra work>
+
+C:  Feedback [OPTIONAL]
+-----------------------
+
+These questions are optional, and they obviously won't affect your grade
+in any way (including if you hate everything about the assignment and
+databases in general, or Donnie and the TAs in particular).
+
+NOTE:  If you wish to give anonymous feedback, a similar survey will be
+       made available on the Moodle.  
+
+C1.  How many hours total did your team spend on this assignment?
+     (That is, the sum of each teammate's time spent on the assignment.)
+
+C2.  What parts of the assignment were most time-consuming?
+
+C3.  Which parts of the assignment did you particularly enjoy?
+
+C4.  Which parts did you particularly dislike?
+
+C5.  Do you have any suggestions for how future versions of the
+     assignment can be improved?

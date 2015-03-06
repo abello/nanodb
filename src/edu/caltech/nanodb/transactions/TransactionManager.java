@@ -478,7 +478,18 @@ public class TransactionManager implements BufferManagerObserver {
      *         going to be broken.
      */
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
-        // TODO: Check this method! Write comments on why it's atomic/durable
+    	/* The function provides durability because once the function completes,
+    	 * it ensures that the WAL records are written to disk, and therefore 
+    	 * will remain so (up to at least this lsn), even in the event of some
+    	 * crash afterwards.
+    	 * 
+    	 * The function is also atomic -- if the database crashes before 
+    	 * we store changes to txnstate.dat, upon starting the database again, 
+    	 * in the recovery step we will use the previously stored nextLSN 
+    	 * value. This means the changes to the WAL written out of the buffer
+    	 * in this function will not be used -- i.e. as if the function was not
+    	 * called at all.
+    	 */
 
     	loadTxnStateFile();
     	
@@ -499,11 +510,16 @@ public class TransactionManager implements BufferManagerObserver {
     	
     	for (int logNo = startLogNo; logNo <= endLogNo; logNo++) {
     		try {
+    			// Try to open the file if it exists
     			walFile = walManager.openWALFile(logNo);
     		}
     		catch (IOException e) {
     			continue;	
     		}
+    		
+    		// Default startPage and endPage to be all pages in file.
+    		// Modify them for the first and last log files, to only write what
+    		// is necessary.
     		int startPage = 0;
     		endPage = Integer.MAX_VALUE;
     		if (logNo == startLogNo) 
@@ -512,9 +528,12 @@ public class TransactionManager implements BufferManagerObserver {
     			endPage = (lsn.getFileOffset() + lsn.getRecordSize()) / walFile.getPageSize();
     		}
     		
+    		// Write to disk, and sync.
     		bufferManager.writeDBFile(walFile, startPage, endPage, true);
     	}
 
+    	// Compute the nextLSN value based on the value after LSN. Factor in
+    	// LSN's record size to compute.
     	int nextLSNPosition = lsn.getFileOffset() + lsn.getRecordSize();
     	txnStateNextLSN = WALManager.computeNextLSN(lsn.getLogFileNo(), nextLSNPosition);
 
