@@ -19,7 +19,7 @@ FLUSH = "FLUSH;\n"
 CRASH = "CRASH;\n"
 
 def delete_files():
-    folder = '/home/ronnel/work/nanodb/datafiles/'
+    folder = './datafiles/'
     shutil.rmtree(folder)
 
 ROLLBACK = "ROLLBACK;\n"
