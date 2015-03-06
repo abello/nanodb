@@ -510,11 +510,16 @@ public class TransactionManager implements BufferManagerObserver {
     	
     	for (int logNo = startLogNo; logNo <= endLogNo; logNo++) {
     		try {
+    			// Try to open the file if it exists
     			walFile = walManager.openWALFile(logNo);
     		}
     		catch (IOException e) {
     			continue;	
     		}
+    		
+    		// Default startPage and endPage to be all pages in file.
+    		// Modify them for the first and last log files, to only write what
+    		// is necessary.
     		int startPage = 0;
     		endPage = Integer.MAX_VALUE;
     		if (logNo == startLogNo) 
@@ -523,9 +528,12 @@ public class TransactionManager implements BufferManagerObserver {
     			endPage = (lsn.getFileOffset() + lsn.getRecordSize()) / walFile.getPageSize();
     		}
     		
+    		// Write to disk, and sync.
     		bufferManager.writeDBFile(walFile, startPage, endPage, true);
     	}
 
+    	// Compute the nextLSN value based on the value after LSN. Factor in
+    	// LSN's record size to compute.
     	int nextLSNPosition = lsn.getFileOffset() + lsn.getRecordSize();
     	txnStateNextLSN = WALManager.computeNextLSN(lsn.getLogFileNo(), nextLSNPosition);
 
