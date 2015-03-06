@@ -514,15 +514,18 @@ public class WALManager {
                 // Read the number of segments (unsigned short)
                 int numSegments = walReader.readUnsignedShort();
 
+                // Perform the undo 
                 byte[] changes = applyUndoAndGenRedoOnlyData(walReader, dbPage, numSegments);
-
-                // Perform the undo with the changes
+                
+                // Write to the WAL our undo to the update
             	newLSN = writeRedoOnlyUpdatePageRecord(transactionID, prevLSN, dbPage, numSegments, changes);
 
+            	// Update the latest LSN for this transaction to its new value
                 recoveryInfo.updateInfo(transactionID, newLSN);
             	walReader.readInt();
             	break;
             case UPDATE_PAGE_REDO_ONLY:
+            	// Do nothing
             	break;
             default: 
             	throw new WALFileException(
@@ -1171,8 +1174,6 @@ public class WALManager {
             }
             else if (type == WALRecordType.UPDATE_PAGE) {
 
-                // TODO: Add extensive debug logging
-
                 // If this is an UPDATE_PAGE record, undo this update
 
                 // the upcoming 6 bytes have to do with the LSN. The first 2 are the lsn number (range 0..65535)
@@ -1205,10 +1206,6 @@ public class WALManager {
                 throw new WALFileException(String.format("Unexpected type %s during rollback", type.toString()));
             }
 
-            if (prevLSN == null) {
-                // This should never happen, throw exception just in case
-                throw new RuntimeException("prevLSn is null!");
-            }
             // Set lsn to previous lsn to walk backward
             lsn = prevLSN;
 
