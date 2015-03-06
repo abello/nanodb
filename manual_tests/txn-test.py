@@ -84,6 +84,7 @@ sql_exec(proc, SELECT)
 sql_exec(proc, ROLLBACK)
 sql_exec(proc, SELECT)
 sql_exec(proc, CRASH)
+print proc.communicate()[0]
 
 print_guide("Restarting nanodb...")
 print_guide("Should only list original two records")
@@ -94,12 +95,69 @@ sql_exec(proc, INS_4)
 sql_exec(proc, SELECT)
 sql_exec(proc, CRASH)
 print_guide("Should list appropriate three records")
+print proc.communicate()[0]
 
 proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
 sql_exec(proc, SELECT)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 2C
+
+
+delete_files()
+proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
+sql_exec(proc, CREATE_TBL)
+sql_exec(proc, BEGIN)
+sql_exec(proc, INS_1)
+sql_exec(proc, INS_2)
+sql_exec(proc, SELECT)
+sql_exec(proc, COMMIT)
+sql_exec(proc, SELECT)
+
+sql_exec(proc, BEGIN)
+sql_exec(proc, INS_0)
+sql_exec(proc, SELECT)
+sql_exec(proc, ROLLBACK)
+sql_exec(proc, SELECT)
+
+sql_exec(proc, FLUSH)
+sql_exec(proc, CRASH)
+print proc.communicate()[0]
+print_guide("Should list all three records, then original two")
+
+
+print_guide("Restarting nanodb...")
+proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
+
+sql_exec(proc, SELECT)
+sql_exec(proc, INS_4)
+sql_exec(proc, SELECT)
+sql_exec(proc, FLUSH)
+sql_exec(proc, CRASH)
+
+print_guide("Restarting nanodb...")
+proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
+sql_exec(proc, SELECT)
+print proc.communicate()[0]
+print_guide("Should list appropriate three records")
 
 
 
