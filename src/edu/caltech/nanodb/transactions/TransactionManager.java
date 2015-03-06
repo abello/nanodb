@@ -511,6 +511,7 @@ public class TransactionManager implements BufferManagerObserver {
     	int nextLSNPosition = lsn.getFileOffset() + lsn.getRecordSize();
     	txnStateNextLSN = WALManager.computeNextLSN(lsn.getLogFileNo(), nextLSNPosition);
 
+        logger.debug(String.format("Setting txnStateNextLSN to %s", txnStateNextLSN));
         // Persist txnstate.dat
         storeTxnStateToFile();
         logger.debug("Finishing forceWAL()");
