@@ -99,6 +99,7 @@ print proc.communicate()[0]
 
 proc = Popen(["./nanodb", ""], stdout=PIPE, stdin=PIPE)
 sql_exec(proc, SELECT)
+print proc.communicate()[0]
 
 
 
