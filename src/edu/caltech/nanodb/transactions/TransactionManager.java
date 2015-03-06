@@ -432,7 +432,6 @@ public class TransactionManager implements BufferManagerObserver {
 
         LogSequenceNumber largestLSN;
         LinkedList<LogSequenceNumber> lsns = new LinkedList<LogSequenceNumber>();
-
         for (DBPage page: pages) {
             // Ignore pages that have a null LSN
             // Moreover, ignore WRITE_AHEAD_LOG_FILE or TXNSTATE_FILE, as these types of
@@ -452,6 +451,7 @@ public class TransactionManager implements BufferManagerObserver {
 
             // calculate largest LSN
             for (LogSequenceNumber lsn : lsns) {
+            	System.out.println("----------------" + lsn.getRecordSize());
                 if (lsn.compareTo(largestLSN) > 0) {
                     largestLSN = lsn;
                 }
@@ -480,8 +480,15 @@ public class TransactionManager implements BufferManagerObserver {
      */
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
         // TODO: Check this method! Write comments on why it's atomic/durable
+    	//System.out.println(Thread.currentThread().getStackTrace());
 
     	loadTxnStateFile();
+    	
+    	if (txnStateNextLSN.compareTo(lsn) > 0) {
+    		logger.debug(String.format(
+    				"forceWAL No-Op: txnStateNextLSN %s, lsn: %s", txnStateNextLSN, lsn));
+    		return;
+    	} 
     	
     	logger.debug(String.format("Entered forceWAL(%s)", lsn.toString()));
     	
@@ -489,25 +496,28 @@ public class TransactionManager implements BufferManagerObserver {
     	int endLogNo = lsn.getLogFileNo();
     	
     	BufferManager bufferManager = storageManager.getBufferManager();
+    	int endPage;
+    	DBFile walFile;
     	
     	for (int logNo = startLogNo; logNo <= endLogNo; logNo++) {
-    		DBFile walFile;
     		try {
     			walFile = walManager.openWALFile(logNo);
     		}
     		catch (IOException e) {
-    			continue;
+    			continue;	
     		}
     		int startPage = 0;
-    		int endPage = Integer.MAX_VALUE;
+    		endPage = Integer.MAX_VALUE;
     		if (logNo == startLogNo) 
     			startPage = txnStateNextLSN.getFileOffset() / walFile.getPageSize();
-    		if (logNo == endLogNo)
-    			endPage = lsn.getFileOffset() / walFile.getPageSize();
+    		if (logNo == endLogNo) {
+    			endPage = (lsn.getFileOffset() + lsn.getRecordSize()) / walFile.getPageSize();
+    		}
     		
     		bufferManager.writeDBFile(walFile, startPage, endPage, true);
     	}
-    	
+
+    	System.out.println("------forceWAL----------" + lsn.getRecordSize());
     	int nextLSNPosition = lsn.getFileOffset() + lsn.getRecordSize();
     	txnStateNextLSN = WALManager.computeNextLSN(lsn.getLogFileNo(), nextLSNPosition);
 
