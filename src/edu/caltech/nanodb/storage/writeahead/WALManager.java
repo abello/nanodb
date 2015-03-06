@@ -235,6 +235,7 @@ public class WALManager {
 
         LogSequenceNumber oldLSN = null;
         DBFileReader walReader = null;
+        /*
         while (currLSN.compareTo(recoveryInfo.nextLSN) < 0) {
             if (oldLSN == null || oldLSN.getLogFileNo() != currLSN.getLogFileNo())
                 walReader = getWALFileReader(currLSN);
@@ -280,7 +281,7 @@ public class WALManager {
             throw new WALFileException("Traversing WAL file didn't yield " +
                 " the same ending LSN as in the transaction-state file.  WAL " +
                 " result:  " + currLSN + "  TxnState:  " + recoveryInfo.nextLSN);
-        }
+        }*/
 
         logger.debug("Redo processing is complete.  There are " +
             recoveryInfo.incompleteTxns.size() + " incomplete transactions.");
