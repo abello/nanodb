@@ -451,7 +451,6 @@ public class TransactionManager implements BufferManagerObserver {
 
             // calculate largest LSN
             for (LogSequenceNumber lsn : lsns) {
-            	System.out.println("----------------" + lsn.getRecordSize());
                 if (lsn.compareTo(largestLSN) > 0) {
                     largestLSN = lsn;
                 }
@@ -480,7 +479,6 @@ public class TransactionManager implements BufferManagerObserver {
      */
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
         // TODO: Check this method! Write comments on why it's atomic/durable
-    	//System.out.println(Thread.currentThread().getStackTrace());
 
     	loadTxnStateFile();
     	
@@ -517,7 +515,6 @@ public class TransactionManager implements BufferManagerObserver {
     		bufferManager.writeDBFile(walFile, startPage, endPage, true);
     	}
 
-    	System.out.println("------forceWAL----------" + lsn.getRecordSize());
     	int nextLSNPosition = lsn.getFileOffset() + lsn.getRecordSize();
     	txnStateNextLSN = WALManager.computeNextLSN(lsn.getLogFileNo(), nextLSNPosition);
 
