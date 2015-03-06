@@ -13,7 +13,7 @@ INS_3 = "INSERT INTO testwal VALUES (3, 'jklmnopqrst', 5.5);\n"
 INS_4 = "INSERT INTO testwal VALUES (4, 'hmm hmm', 261.32);\n"
 INS_0 = "INSERT INTO testwal VALUES (-1, 'zxywvu', 78.2);\n"
 
-SELECT = "SELECT * FROM testwal\n"
+SELECT = "SELECT * FROM testwal;\n"
 
 BEGIN = "BEGIN;\n"
 COMMIT = "COMMIT;\n"
@@ -30,7 +30,7 @@ def sql_exec(proc, sql):
 
 def print_guide(sql):
     ''' Prints a testing guide, such as "should have returned X" '''
-    print sql
+    print  '\033[92m' + sql + '\033[0m'
 
 
 # delete_files()
@@ -38,13 +38,14 @@ sql_exec(proc, CREATE_TBL)
 sql_exec(proc, INS_1)
 sql_exec(proc, INS_2)
 
+
+sql_exec(proc, BEGIN)
 sql_exec(proc, SELECT)
 
 print_guide("Should list both records")
 sql_exec(proc, COMMIT)
 print_guide("Should list both records")
-# print proc.communicate()[0]
-# proc.stdout.readlines()
+print proc.communicate()[0]
 
 
 
