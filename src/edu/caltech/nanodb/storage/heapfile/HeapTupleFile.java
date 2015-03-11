@@ -22,6 +22,7 @@ import edu.caltech.nanodb.storage.InvalidFilePointerException;
 import edu.caltech.nanodb.storage.PageTuple;
 import edu.caltech.nanodb.storage.StorageManager;
 import edu.caltech.nanodb.storage.TupleFile;
+import edu.caltech.nanodb.storage.TupleFileManager;
 
 
 /**
@@ -86,6 +87,13 @@ public class HeapTupleFile implements TupleFile {
     }
 
 
+    @Override
+    public TupleFileManager getManager() {
+        return heapFileManager;
+    }
+
+
+    @Override
     public TableSchema getSchema() {
         return schema;
     }
@@ -451,6 +459,7 @@ public class HeapTupleFile implements TupleFile {
         DataPage.sanityCheck(dbPage);
     }
 
+
     @Override
     public void analyze() throws IOException {
         int numColumns = schema.numColumns();
@@ -516,8 +525,10 @@ public class HeapTupleFile implements TupleFile {
     @Override
     public List<String> verify() throws IOException {
         // TODO!
-        throw new UnsupportedOperationException("Not yet implemented!");
+        // Right now we will just report that everything is fine.
+        return new ArrayList<String>();
     }
+
 
     @Override
     public void optimize() throws IOException {
