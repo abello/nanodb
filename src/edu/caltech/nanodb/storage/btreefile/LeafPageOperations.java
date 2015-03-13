@@ -4,6 +4,7 @@ package edu.caltech.nanodb.storage.btreefile;
 import java.io.IOException;
 import java.util.List;
 
+import edu.caltech.nanodb.storage.PageTuple;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.TupleComparator;
@@ -341,7 +342,8 @@ public class LeafPageOperations {
         // Figure out where the new tuple-value goes in the leaf page.
 
         int newTupleSize = newTuple.getStorageSize();
-        if (leaf.getFreeSpace() < newTupleSize) {
+        // TODO: undo this
+        if (leaf.getFreeSpace() < newTupleSize || leaf.getNumTuples() >= 4) {
             // Try to relocate tuples from this leaf to either sibling,
             // or if that can't happen, split the leaf page into two.
             result = relocateTuplesAndAddTuple(leaf, pagePath, newTuple);
@@ -632,7 +634,6 @@ public class LeafPageOperations {
         return numRelocated;
     }
 
-
     /**
      * This helper function splits the specified leaf-node into two nodes,
      * also updating the parent node in the process, and then inserts the
@@ -652,7 +653,7 @@ public class LeafPageOperations {
      *
      * @param tuple the new tuple to insert into the leaf node
      *
-     * @throws IOException if an IO error occurs during the operation.
+     * @throws java.io.IOException if an IO error occurs during the operation.
      */
     private BTreeFilePageTuple splitLeafAndAddTuple(LeafPage leaf,
         List<Integer> pagePath, TupleLiteral tuple) throws IOException {
@@ -675,16 +676,73 @@ public class LeafPageOperations {
         DBPage newDBPage = fileOps.getNewDataPage();
         LeafPage newLeaf = LeafPage.init(newDBPage, tupleFile.getSchema());
 
-        /* TODO:  IMPLEMENT THE REST OF THIS METHOD.
-         *
-         * The LeafPage class provides some helpful operations for moving leaf-
-         * entries to a left or right sibling.
-         *
-         * The parent page must also be updated.  If the leaf node doesn't have
-         * a parent, the tree's depth will increase by one level.
-         */
-        logger.error("NOT YET IMPLEMENTED:  splitLeafAndAddKey()");
-        return null;
+
+
+        /* start */
+        InnerPage parentPage = null;
+
+        int parentPageNo = 0;
+        if (pathSize > 1)
+            parentPageNo = pagePath.get(pathSize - 2);
+
+        if (parentPageNo != 0) {
+            parentPage = innerPageOps.loadPage(parentPageNo);
+        }
+
+        int numTuples = leaf.getNumTuples();
+        newLeaf.setNextPageNo(leaf.getNextPageNo());
+        leaf.setNextPageNo(newLeaf.getPageNo());
+        leaf.moveTuplesRight(newLeaf, numTuples / 2);
+
+        logger.debug("    New left # of tuples:  " + leaf.getNumTuples());
+        logger.debug("    New right # of tuples:  " + newLeaf.getNumTuples());
+
+        BTreeFilePageTuple res = addTupleToLeafPair(leaf, newLeaf, tuple);
+
+        assert (newLeaf.getNumTuples() > 0);
+        Tuple newParentKey = newLeaf.getTuple(0);
+
+        // If the current node doesn't have a parent, it's because it's
+        // currently the root.
+        if (parentPageNo == 0) {
+            // Create a new root node and set both leaves to have it as their
+            // parent.
+            DBPage dbpParent = fileOps.getNewDataPage();
+            parentPage = InnerPage.init(dbpParent, tupleFile.getSchema(),
+                    leaf.getPageNo(), newParentKey, newLeaf.getPageNo());
+
+            parentPageNo = parentPage.getPageNo();
+
+            // We have a new root-page in the index!
+            DBFile dbFile = tupleFile.getDBFile();
+            DBPage dbpHeader = storageManager.loadDBPage(dbFile, 0);
+            HeaderPage.setRootPageNo(dbpHeader, parentPageNo);
+
+            logger.debug("Set index root-page to inner-page " + parentPageNo);
+        }
+        else {
+            // Add the new page into the parent non-leaf node.  (This may cause
+            // the parent node's contents to be moved or split, if the parent
+            // is full.)
+
+            // (We already set the new node's parent-page-number earlier.)
+
+            pagePath.remove(pathSize - 1);
+            innerPageOps.addTuple(parentPage, pagePath, leaf.getPageNo(), newParentKey,
+                    newLeaf.getPageNo());
+
+            logger.debug("Parent page " + parentPageNo + " now has " +
+                    parentPage.getNumPointers() + " page-pointers.");
+        }
+
+        if (logger.isTraceEnabled()) {
+            logger.trace("Parent page contents:\n" +
+                    parentPage.toFormattedString());
+        }
+
+        return res;
+
+        /* end */
     }
 
 

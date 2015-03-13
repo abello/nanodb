@@ -462,6 +462,9 @@ public class BTreeTupleFile implements SequentialTupleFile {
             int pageNo = innerPage.getPointer(i);
             dbPage = storageManager.loadDBPage(dbFile, pageNo);
             pageType = dbPage.readByte(0);
+            // TODO: verify that we should add the last page to pagePath
+            if (pagePath != null)
+                pagePath.add(pageNo);
         }
 
         if (pageType != BTREE_LEAF_PAGE) {

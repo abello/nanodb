@@ -302,6 +302,12 @@ public class TupleComparator implements Comparator<Tuple> {
                 throw new IllegalArgumentException("tuples must be the same size");
         }
         else {
+            if (t1Size == 0 && t2Size > 0) {
+                return -1;
+            } else if (t1Size > 0 && t2Size > 0) {
+                return 1;
+            }
+
             // Only compare the columns that are present in both tuples.
             t1Size = Math.min(t1Size, t2Size);
             t2Size = t1Size;
