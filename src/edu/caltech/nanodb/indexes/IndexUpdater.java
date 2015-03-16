@@ -134,10 +134,18 @@ public class IndexUpdater implements RowEventListener {
                 //
                 // Finally, add a new tuple to the index, including the
                 // tuple-pointer to the tuple in the table.
-
+                TableConstraintType constraint = indexDef.getConstraintType();
                 Tuple newTup = IndexUtils.makeSearchKeyValue(indexDef, ptup, false);
                 Tuple foundTuple = IndexUtils.findTupleInIndex(newTup, indexInfo.getTupleFile());
-
+                if ((constraint == TableConstraintType.UNIQUE || 
+                		constraint == TableConstraintType.PRIMARY_KEY) 
+                		&& foundTuple != null) {
+                	throw new EventDispatchException("Couldn't update unique index " +
+                            indexDef.getIndexName() + " for table " +
+                            tblFileInfo.getTableName());
+                }
+                newTup = IndexUtils.makeSearchKeyValue(indexDef, ptup, true);
+                indexInfo.getTupleFile().addTuple(newTup);
             }
             catch (IOException e) {
                 throw new EventDispatchException("Couldn't update index " +
