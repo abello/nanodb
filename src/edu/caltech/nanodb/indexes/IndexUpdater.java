@@ -177,13 +177,19 @@ public class IndexUpdater implements RowEventListener {
                 IndexInfo indexInfo = indexManager.openIndex(tblFileInfo,
                     indexDef.getIndexName());
 
-                // TODO:  Implement!
-                //
                 // Find and remove the entry in this index, corresponding to
                 // the passed-in tuple.
                 //
                 // If the tuple doesn't appear in this index, throw an
                 // IllegalStateException to indicate that the index is bad.
+                Tuple newTup = IndexUtils.makeSearchKeyValue(indexDef, ptup, false);
+                Tuple foundTuple = IndexUtils.findTupleInIndex(newTup, indexInfo.getTupleFile());
+                // If tuple is not found, through an exception
+                if (foundTuple == null) {
+                    throw new IllegalStateException(String.format("Tuple %s not found", ptup));
+                }
+                newTup = IndexUtils.makeSearchKeyValue(indexDef, ptup, true);
+                indexInfo.getTupleFile().deleteTuple(newTup);
             }
             catch (IOException e) {
                 throw new EventDispatchException("Couldn't update index " +
