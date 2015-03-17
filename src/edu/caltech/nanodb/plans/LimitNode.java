@@ -33,8 +33,6 @@ public class LimitNode extends PlanNode {
 
     /**
      * Constructs a LimitNode that limits the number of tuples in output.
-     *
-     * @param predicate the selection criterion
      */
     public LimitNode(PlanNode child, int limit) {
         super(OperationType.LIMIT, child);
