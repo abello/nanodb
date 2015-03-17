@@ -36,7 +36,7 @@ public class LimitNode extends PlanNode {
      *
      * @param predicate the selection criterion
      */
-    protected LimitNode(PlanNode child, int limit) {
+    public LimitNode(PlanNode child, int limit) {
         super(OperationType.LIMIT, child);
         this.child = child;
         this.limit = limit;
@@ -90,7 +90,7 @@ public class LimitNode extends PlanNode {
         // predicate.
         do {
         	Tuple oldTuple = currentTuple;
-            advanceCurrentTuple();
+            currentTuple = leftChild.getNextTuple();
             tuplesTraversed++;
             
             // Previous tuple is no longer needed, unpin it.

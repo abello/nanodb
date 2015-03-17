@@ -16,7 +16,6 @@ import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.commands.SelectValue;
 import edu.caltech.nanodb.expressions.AggregateReplacementProcessor;
-import edu.caltech.nanodb.expressions.BooleanOperator;
 import edu.caltech.nanodb.expressions.ColumnValue;
 import edu.caltech.nanodb.expressions.Expression;
 import edu.caltech.nanodb.expressions.OrderByExpression;
@@ -324,7 +323,7 @@ public class CostBasedJoinPlanner implements Planner {
         logger.debug("    Result plan:  " +
                 PlanNode.printNodeTreeToString(res, true));
 
-
+        res = planLimitClause(res, selClause);
         res.prepare();
         return res;
     }
