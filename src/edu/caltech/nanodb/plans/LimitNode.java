@@ -88,7 +88,7 @@ public class LimitNode extends PlanNode {
         // predicate.
         do {
         	Tuple oldTuple = currentTuple;
-            currentTuple = leftChild.getNextTuple();
+            currentTuple = child.getNextTuple();
             tuplesTraversed++;
             
             // Previous tuple is no longer needed, unpin it.
@@ -184,7 +184,7 @@ public class LimitNode extends PlanNode {
         if (obj instanceof LimitNode) {
             LimitNode other = (LimitNode) obj;
 
-            return child.equals(other.leftChild);
+            return child.equals(other.child);
         }
 
         return false;
