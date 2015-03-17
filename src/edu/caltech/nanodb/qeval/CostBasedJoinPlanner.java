@@ -23,6 +23,7 @@ import edu.caltech.nanodb.expressions.OrderByExpression;
 import edu.caltech.nanodb.expressions.PredicateUtils;
 import edu.caltech.nanodb.plans.FileScanNode;
 import edu.caltech.nanodb.plans.HashedGroupAggregateNode;
+import edu.caltech.nanodb.plans.LimitNode;
 import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
 import edu.caltech.nanodb.plans.PlanNode;
 import edu.caltech.nanodb.plans.PlanUtils;
@@ -186,6 +187,14 @@ public class CostBasedJoinPlanner implements Planner {
             return new SortNode(child, orderExpressions);
         }
         return child;
+    }
+    
+    private PlanNode planLimitClause(PlanNode child, SelectClause selClause) {
+    	int limit = selClause.getLimit();
+    	if (limit != 0) {
+    		return new LimitNode(child, limit);
+    	}
+    	return child;
     }
 
     private void traverseAggregateFunctions(SelectClause selClause, AggregateReplacementProcessor processor) {

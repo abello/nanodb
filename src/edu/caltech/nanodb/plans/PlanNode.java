@@ -48,7 +48,10 @@ public abstract class PlanNode implements Cloneable {
         SORT,
 
         /** A materialize plan-node. */
-        MATERIALIZE
+        MATERIALIZE,
+        
+        /** A limit plan-node. */
+        LIMIT
     }
 
 
