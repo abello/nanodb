@@ -118,78 +118,89 @@ public class LimitNode extends PlanNode {
 
 	@Override
 	public List<OrderByExpression> resultsOrderedBy() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 
 	@Override
 	public boolean supportsMarking() {
-		// TODO Auto-generated method stub
-		return false;
+        return child.supportsMarking();
 	}
 
 
 	@Override
 	public boolean requiresLeftMarking() {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 
 	@Override
 	public boolean requiresRightMarking() {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
 
 	@Override
 	public void prepare() {
-		// TODO Auto-generated method stub
-		
+        // TODO: Need to do anything else here?
+        child.prepare();
 	}
 
 
 	@Override
 	public void markCurrentPosition() {
-		// TODO Auto-generated method stub
-		
+        child.markCurrentPosition();
 	}
 
 
 	@Override
 	public void resetToLastMark() {
-		// TODO Auto-generated method stub
-		
+        child.resetToLastMark();
 	}
 
 
 	@Override
 	public void cleanUp() {
-		// TODO Auto-generated method stub
-		
+        child.cleanUp();
 	}
 
 
 	@Override
 	public String toString() {
-		// TODO Auto-generated method stub
-		return null;
+        // Inspired by NestedLoopsJoinNode
+        StringBuilder buf = new StringBuilder();
+
+        buf.append("LimitNode[");
+        buf.append(limit);
+
+
+        buf.append(']');
+
+        return buf.toString();
 	}
 
 
 	@Override
 	public boolean equals(Object obj) {
-		// TODO Auto-generated method stub
-		return false;
+        // Inspired by NestedLoopsJoinNode
+        if (obj instanceof LimitNode) {
+            LimitNode other = (LimitNode) obj;
+
+            return child.equals(other.leftChild);
+        }
+
+        return false;
 	}
 
 
 	@Override
+    /** Computes the hash-code of the limit plan node. */
 	public int hashCode() {
-		// TODO Auto-generated method stub
-		return 0;
+        // Can find a better hash, but this should be good enough for now.
+        // Inspired by NestedLoopsJoinNode
+        int hash = 7;
+        hash = 31 * hash + child.hashCode();
+        return hash;
 	}
 
 }
