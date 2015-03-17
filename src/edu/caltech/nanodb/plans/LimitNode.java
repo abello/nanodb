@@ -6,6 +6,7 @@ import java.util.List;
 
 import edu.caltech.nanodb.expressions.OrderByExpression;
 import edu.caltech.nanodb.relations.Tuple;
+import org.apache.log4j.Logger;
 
 
 /**
@@ -16,6 +17,9 @@ public class LimitNode extends PlanNode {
 
     /** The number of tuples to output. */
     public int limit;
+
+    /** A logger for interesting stuff */
+    private static Logger logger = Logger.getLogger(LimitNode.class);
 
 
     /** The current tuple that the node is selecting. */
@@ -81,6 +85,7 @@ public class LimitNode extends PlanNode {
 
         // If this node is finished finding tuples, return null until it is
         // re-initialized.
+        logger.debug("getnexttuple called");
         if (done)
             return null;
 
@@ -141,6 +146,7 @@ public class LimitNode extends PlanNode {
 	@Override
 	public void prepare() {
         // TODO: Need to do anything else here?
+        logger.debug("prepare() called");
         child.prepare();
 	}
 
