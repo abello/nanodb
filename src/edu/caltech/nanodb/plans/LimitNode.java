@@ -91,7 +91,7 @@ public class LimitNode extends PlanNode {
 
         // Continue to advance the current tuple until it is selected by the
         // predicate.
-        do {
+        if (!isLimitReached()) {
         	Tuple oldTuple = currentTuple;
             currentTuple = child.getNextTuple();
             tuplesTraversed++;
@@ -100,18 +100,16 @@ public class LimitNode extends PlanNode {
             if (oldTuple != null)
             	oldTuple.unpin();
 
-            // If the last tuple in the file (or chain of nodes) did not satisfy the
-            // predicate, then the selection process is over, so set the done flag and
-            // return null.
             if (currentTuple == null) {
                 done = true;
-                return null;
             }
+            return currentTuple;
         }
-        while (!isLimitReached());
 
-        // The current tuple now satisfies the predicate, so return it.
-        return currentTuple;
+        logger.debug("Returning null");
+        // Shouldn't reach this point (unless limit is reached); so we're done
+        done = true;
+        return null;
     }
     
     protected boolean isLimitReached() {
