@@ -148,6 +148,7 @@ public class LimitNode extends PlanNode {
         // TODO: Need to do anything else here?
         logger.debug("prepare() called");
         child.prepare();
+        schema = child.getSchema();
 	}
 
 
@@ -172,6 +173,7 @@ public class LimitNode extends PlanNode {
 	@Override
 	public String toString() {
         // Inspired by NestedLoopsJoinNode
+        logger.debug("toString() called");
         StringBuilder buf = new StringBuilder();
 
         buf.append("LimitNode[");
