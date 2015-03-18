@@ -40,19 +40,32 @@ B2.  What is the maximum number of search-keys that can be stored in leaf
      nodes of NanoDB's B+ tree implementation?  You should assume the
      default page-size of 8192 bytes.
 
+     Each key needs to have 1 byte for null flags, and needs at least 1 byte
+     for the key data. Let K := the number of keys, P := the number of
+     pointers. I assume that the rightmost leafnode can have a terminal
+     search-key (i.e. the last entry is not a pointer). Then K = P -->
+     4P = 8192 --> P = 2048
+
 B3.  What is the maximum number of keys that can be stored in inner nodes
      of this particular implementation?  (Recall that every key must have
      a page-pointer on either side of the key.)
+
+     K = P - 1. 2K + 2P = 8192 --> 2(P - 1) + 2P = 8192 --> P = 2048.5
+     --> 2047 (after rounding down).
 
 B4.  In this implementation, leaf nodes do not reference the previous
      leaf, only the next leaf.  When splitting a leaf into two leaves,
      what is the maximum number of leaf nodes that must be read or written,
      in order to properly manage the next-leaf pointers?
 
+     By lecture 12, page 21, when splitting a leaf node, the new node
+     is always to the right of the node. Hence, we don't need to reference
+     the previous (left) leaf. --> 2
+
      If leaves also contained a previous-leaf pointer, what would the
      answer be instead?
 
-     Make sure to explain your answers.
+     Since we don't need the previous leaf pointer, it's the same. 2.
 
 B5.  In this implementation, nodes do not store a page-pointer to their
      parent node.  This makes the update process somewhat complicated, as
@@ -68,6 +81,20 @@ B5.  In this implementation, nodes do not store a page-pointer to their
      this alternate representation and the given implementation, where
      nodes do not record their parents?  Which one would you recommend?
      Justify your answer.
+
+     Advantages of alternative representation:
+     * Don't need to do traversals in order to identify the parent.
+     * Implementational simplicity; don't need to carry around the
+       traversals everywhere.
+
+     Disadvantages:
+     * An extra 2 bytes is used to store the parent pointer in the inner
+       pages.
+
+     I would thus recommend using the alternative representation if aiming
+     for simplicity of the codebase; otherwise, I'd use this one because
+     it uses pages slightly more efficiently.
+
 
 B6.  It should be obvious how indexes can be used to enforce primary keys,
      but what role might they play with foreign keys?  For example, given
