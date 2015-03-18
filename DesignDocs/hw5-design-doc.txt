@@ -110,6 +110,12 @@ B6.  It should be obvious how indexes can be used to enforce primary keys,
 
      Why might we want to build an index on t2.id?
 
+     Building an index on t2.id implies enforcing a uniqueness constraint
+     on id's value. If t2 references t1's primary key t1.id then t2.id 
+     must be unique as well. Thus, an index on t2.id enforces the 
+     constraint that foreign key references to primary keys of other 
+     tables must be unique. 
+
 E:  Extra Credit [OPTIONAL]
 ---------------------------
 
