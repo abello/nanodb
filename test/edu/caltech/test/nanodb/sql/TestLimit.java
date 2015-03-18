@@ -34,7 +34,24 @@ public class TestLimit extends SqlTestCase {
 
         CommandResult result;
 
-        result = server.doCommand("SELECT * FROM test_limit limit 2", true);
+        result = server.doCommand("SELECT * FROM test_limit limit 2 ORDER BY a", true);
+        assert checkUnorderedResults(expected, result);
+    }
+
+    /**
+     * This tests performs a limit 0, i.e. unlimited
+     */
+    public void testLimitUnlimited() throws Throwable {
+        TupleLiteral[] expected = {
+                new TupleLiteral(0, 0),
+                new TupleLiteral(10, 1),
+                new TupleLiteral(20, 2),
+                new TupleLiteral(30, 3),
+        };
+
+        CommandResult result;
+
+        result = server.doCommand("SELECT * FROM test_limit limit 0 ORDER BY a", true);
         assert checkUnorderedResults(expected, result);
     }
     

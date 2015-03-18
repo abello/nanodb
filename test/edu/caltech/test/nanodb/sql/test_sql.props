@@ -641,10 +641,10 @@ setup_testLimit = \
         a INTEGER, \
         b INTEGER \
     ); \
-    INSERT INTO test_natural_1 VALUES (0, 0); \
-    INSERT INTO test_natural_1 VALUES (10, 1); \
-    INSERT INTO test_natural_1 VALUES (20, 2); \
-    INSERT INTO test_natural_1 VALUES (30, 3); \
+    INSERT INTO test_limit VALUES (0, 0); \
+    INSERT INTO test_limit VALUES (10, 1); \
+    INSERT INTO test_limit VALUES (20, 2); \
+    INSERT INTO test_limit VALUES (30, 3);
 
 
 
