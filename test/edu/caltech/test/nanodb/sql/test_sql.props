@@ -635,7 +635,16 @@ setup_testNaturalJoins = \
     INSERT INTO test_natural_dup_4 VALUES (3, 300); \
     INSERT INTO test_natural_dup_4 VALUES (4, 400);
 
-
+# This setup SQL is used for testing joins
+setup_testLimit = \
+    CREATE TABLE test_limit ( \
+        a INTEGER, \
+        b INTEGER \
+    ); \
+    INSERT INTO test_natural_1 VALUES (0, 0); \
+    INSERT INTO test_natural_1 VALUES (10, 1); \
+    INSERT INTO test_natural_1 VALUES (20, 2); \
+    INSERT INTO test_natural_1 VALUES (30, 3); \
 
 
 
