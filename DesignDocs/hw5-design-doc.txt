@@ -36,6 +36,8 @@ B1.  What is the total size of the index's search-key for the primary-key
      byte-level in your answer, but you should show what each byte is a
      part of.)
 
+     Each search key needs 4 bytes to store the integer type key.
+
 B2.  What is the maximum number of search-keys that can be stored in leaf
      nodes of NanoDB's B+ tree implementation?  You should assume the
      default page-size of 8192 bytes.
